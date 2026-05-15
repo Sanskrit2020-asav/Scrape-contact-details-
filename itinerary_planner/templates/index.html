@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Itinerary Planner</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1d1d1f; }
+    h1 { margin-bottom: .25rem; }
+    .sub { color: #666; margin-top: 0; }
+    form { display: grid; gap: 1rem; margin-top: 1.5rem; }
+    label { font-weight: 600; display: block; margin-bottom: .3rem; }
+    input, textarea { width: 100%; padding: .6rem; border: 1px solid #ccc; border-radius: 8px; font: inherit; box-sizing: border-box; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    button { padding: .7rem 1.2rem; border: 0; border-radius: 8px; background: #0a7; color: #fff; font-weight: 600; cursor: pointer; }
+    .meta { background: #f3f4f6; padding: .8rem 1rem; border-radius: 8px; font-size: .9rem; }
+    .reindex { margin-top: 2rem; }
+    .reindex button { background: #555; }
+  </style>
+</head>
+<body>
+  <h1>Itinerary Planner</h1>
+  <p class="sub">Answer the client's brief — get the best match from your prepared itineraries.</p>
+
+  <div class="meta">
+    {{ count }} prepared itinerary file(s) indexed.
+    {% if reindexed %}<strong>Re-indexed.</strong>{% endif %}
+    {% if count == 0 %}
+      <br>Drop your <code>.pdf</code> / <code>.docx</code> itineraries into the
+      <code>itineraries/</code> folder, then Re-index.
+    {% endif %}
+  </div>
+
+  <form action="{{ url_for('plan') }}" method="post">
+    <div>
+      <label for="destination">Destination / region</label>
+      <input id="destination" name="destination" placeholder="e.g. Nepal, Everest Base Camp">
+    </div>
+    <div class="row">
+      <div>
+        <label for="duration_days">Trip length (days)</label>
+        <input id="duration_days" name="duration_days" type="number" min="1" max="60" placeholder="e.g. 12">
+      </div>
+      <div>
+        <label for="travelers">Travelers</label>
+        <input id="travelers" name="travelers" placeholder="e.g. couple, family with kids">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="budget">Budget level</label>
+        <input id="budget" name="budget" placeholder="e.g. luxury, mid-range, budget">
+      </div>
+      <div>
+        <label for="season">Season / month</label>
+        <input id="season" name="season" placeholder="e.g. October, monsoon">
+      </div>
+    </div>
+    <div>
+      <label for="interests">Interests / activities</label>
+      <input id="interests" name="interests" placeholder="e.g. trekking, culture, wildlife, photography">
+    </div>
+    <div>
+      <label for="notes">Other notes from the client</label>
+      <textarea id="notes" name="notes" rows="3" placeholder="Anything else the client mentioned"></textarea>
+    </div>
+    <button type="submit">Find best itineraries</button>
+  </form>
+
+  <form class="reindex" action="{{ url_for('reindex') }}" method="post">
+    <button type="submit">Re-index itineraries folder</button>
+  </form>
+</body>
+</html>
