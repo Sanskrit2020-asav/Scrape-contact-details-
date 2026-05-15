@@ -3,5 +3,9 @@ __pycache__/
 .env
 output/*.csv
 output/itinerary_index.json
+output/gdrive_sync.json
 !output/.gitkeep
 .venv/
+.gdrive_token.json
+*service-account*.json
+*oauth_client*.json

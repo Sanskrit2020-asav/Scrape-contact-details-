@@ -25,6 +25,7 @@
   <div class="meta">
     {{ count }} prepared itinerary file(s) indexed.
     {% if reindexed %}<strong>Re-indexed.</strong>{% endif %}
+    {% if drive_msg %}<br><strong>{{ drive_msg }}</strong>{% endif %}
     {% if count == 0 %}
       <br>Drop your <code>.pdf</code> / <code>.docx</code> itineraries into the
       <code>itineraries/</code> folder, then Re-index.
@@ -69,6 +70,12 @@
 
   <form class="reindex" action="{{ url_for('reindex') }}" method="post">
     <button type="submit">Re-index itineraries folder</button>
+  </form>
+
+  <form class="reindex" action="{{ url_for('sync_drive_route') }}" method="post">
+    <label for="folder" style="font-weight:600">Sync from Google Drive</label>
+    <input id="folder" name="folder" placeholder="Drive folder ID or share URL (or set GDRIVE_FOLDER_ID)" style="width:100%;padding:.6rem;border:1px solid #ccc;border-radius:8px;box-sizing:border-box;margin:.4rem 0">
+    <button type="submit">Sync from Drive</button>
   </form>
 </body>
 </html>

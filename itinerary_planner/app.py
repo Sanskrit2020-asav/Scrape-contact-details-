@@ -51,6 +51,34 @@ def reindex():
     return render_template("index.html", count=len(build_index()), reindexed=True)
 
 
+@app.route("/sync-drive", methods=["POST"])
+def sync_drive_route():
+    import os
+
+    folder = request.form.get("folder", "").strip() or os.environ.get(
+        "GDRIVE_FOLDER_ID", ""
+    )
+    if not folder:
+        return render_template(
+            "index.html",
+            count=len(build_index()),
+            drive_msg="Set GDRIVE_FOLDER_ID or enter a Drive folder ID/URL.",
+        )
+    try:
+        from .sync_drive import sync
+
+        pulled = sync(folder)
+        build_index(force=True)
+        msg = f"Synced from Drive: {pulled} new/updated file(s) pulled and indexed."
+    except SystemExit as exc:
+        msg = f"Drive sync not configured: {exc}"
+    except Exception as exc:  # noqa: BLE001 - surface any Drive/auth error to the UI
+        msg = f"Drive sync failed: {exc}"
+    return render_template(
+        "index.html", count=len(build_index()), drive_msg=msg
+    )
+
+
 @app.route("/download/<path:filename>")
 def download(filename: str):
     safe_root = ITINERARIES_DIR.resolve()

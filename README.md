@@ -115,3 +115,35 @@ Use **Re-index** after adding or changing files.
 Pure-Python TF-IDF cosine similarity over each itinerary's text, with a
 duration-proximity boost (a "14 day" request favours ~14-day itineraries).
 No external ML dependency.
+
+## Sync itineraries from Google Drive
+
+There is no pre-existing Drive connection — the connector authenticates with
+**your** Google credential. Run it where you have that credential (your Mac);
+the cloud session cannot reach your Drive.
+
+### One-time credential setup (pick one)
+
+- **Service account** (recommended for a folder you own / shared with it):
+  create a service account in Google Cloud, enable the Drive API, download
+  its JSON key, and share the Drive folder with the service account's email.
+  ```
+  export GDRIVE_SERVICE_ACCOUNT=/path/to/service-account.json
+  ```
+- **OAuth Desktop client** (uses your own Google login, opens a browser once):
+  ```
+  export GDRIVE_OAUTH_CLIENT=/path/to/oauth_client.json
+  ```
+
+### Sync
+
+```
+. .venv/bin/activate
+python -m itinerary_planner.sync_drive --folder "https://drive.google.com/drive/folders/XXXX"
+# or: export GDRIVE_FOLDER_ID=XXXX  then  python -m itinerary_planner.sync_drive
+```
+
+Pulls PDF/DOCX/TXT/MD (Google Docs are exported to .docx) into
+`itineraries/`, skips unchanged files, then `git commit && git push` so the
+files are available everywhere. The web app also has a **Sync from Drive**
+button that does the same when credentials are configured on the host.
