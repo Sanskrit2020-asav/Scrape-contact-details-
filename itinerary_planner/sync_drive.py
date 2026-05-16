@@ -143,12 +143,34 @@ def sync(folder: str, recurse: bool = True) -> int:
     service = _build_service()
     ITINERARIES_DIR.mkdir(parents=True, exist_ok=True)
 
-    state: dict[str, str] = {}
+    # state maps Drive file id -> {"mtime": <modifiedTime>, "name": <local filename>}.
+    raw_state: dict = {}
     if SYNC_STATE.exists():
         try:
-            state = json.loads(SYNC_STATE.read_text())
+            raw_state = json.loads(SYNC_STATE.read_text())
         except Exception:
-            state = {}
+            raw_state = {}
+    state: dict[str, dict] = {}
+    for fid, val in raw_state.items():
+        state[fid] = val if isinstance(val, dict) else {"mtime": val, "name": None}
+
+    taken = {v["name"] for v in state.values() if v.get("name")}
+
+    def unique_name(file_id: str, drive_name: str, ext: str) -> str:
+        prev = state.get(file_id, {}).get("name")
+        if prev:
+            return prev
+        base = _safe_name(drive_name, ext)
+        if base not in taken:
+            taken.add(base)
+            return base
+        stem, suffix = base[: -len(ext)], ext
+        i = 2
+        while f"{stem} ({i}){suffix}" in taken:
+            i += 1
+        chosen = f"{stem} ({i}){suffix}"
+        taken.add(chosen)
+        return chosen
 
     files = _list_folder(service, folder_id, recurse)
     pulled = skipped = 0
@@ -161,11 +183,16 @@ def sync(folder: str, recurse: bool = True) -> int:
         else:
             continue
 
-        if state.get(f["id"]) == f["modifiedTime"] and not _missing(f, ext):
+        local_name = unique_name(f["id"], f["name"], ext)
+        target = ITINERARIES_DIR / local_name
+
+        if (
+            state.get(f["id"], {}).get("mtime") == f["modifiedTime"]
+            and target.exists()
+        ):
             skipped += 1
             continue
 
-        target = ITINERARIES_DIR / _safe_name(f["name"], ext)
         if mime in EXPORTABLE:
             req = service.files().export_media(fileId=f["id"], mimeType=DOC_EXPORT_MIME)
         else:
@@ -177,7 +204,7 @@ def sync(folder: str, recurse: bool = True) -> int:
             while not done:
                 _, done = downloader.next_chunk()
 
-        state[f["id"]] = f["modifiedTime"]
+        state[f["id"]] = {"mtime": f["modifiedTime"], "name": local_name}
         pulled += 1
         print(f"  pulled  {target.name}")
 
@@ -186,10 +213,6 @@ def sync(folder: str, recurse: bool = True) -> int:
     print(f"\nDrive sync complete: {pulled} pulled, {skipped} unchanged.")
     print("Now run the planner and click Re-index (or commit + push the files).")
     return pulled
-
-
-def _missing(f: dict, ext: str) -> bool:
-    return not (ITINERARIES_DIR / _safe_name(f["name"], ext)).exists()
 
 
 def main() -> None:
