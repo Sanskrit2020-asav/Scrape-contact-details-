@@ -137,6 +137,7 @@ def _safe_name(name: str, ext: str) -> str:
 
 
 def sync(folder: str, recurse: bool = True) -> int:
+    from googleapiclient.errors import HttpError
     from googleapiclient.http import MediaIoBaseDownload
 
     folder_id = _folder_id(folder)
@@ -174,6 +175,7 @@ def sync(folder: str, recurse: bool = True) -> int:
 
     files = _list_folder(service, folder_id, recurse)
     pulled = skipped = 0
+    failed: list[tuple[str, str]] = []
     for f in files:
         mime = f["mimeType"]
         if mime in EXPORTABLE:
@@ -193,16 +195,43 @@ def sync(folder: str, recurse: bool = True) -> int:
             skipped += 1
             continue
 
-        if mime in EXPORTABLE:
-            req = service.files().export_media(fileId=f["id"], mimeType=DOC_EXPORT_MIME)
-        else:
-            req = service.files().get_media(fileId=f["id"])
+        def _download(request, dest: Path) -> None:
+            with open(dest, "wb") as fh:
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while not done:
+                    _, done = downloader.next_chunk()
 
-        with open(target, "wb") as fh:
-            downloader = MediaIoBaseDownload(fh, req)
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
+        try:
+            if mime in EXPORTABLE:
+                try:
+                    _download(
+                        service.files().export_media(
+                            fileId=f["id"], mimeType=DOC_EXPORT_MIME
+                        ),
+                        target,
+                    )
+                except HttpError as exc:
+                    # Google Docs over the .docx export limit: fall back to PDF.
+                    if "exportSizeLimitExceeded" not in str(exc):
+                        raise
+                    target.unlink(missing_ok=True)
+                    target = target.with_suffix(".pdf")
+                    local_name = target.name
+                    _download(
+                        service.files().export_media(
+                            fileId=f["id"], mimeType="application/pdf"
+                        ),
+                        target,
+                    )
+                    print("  (large doc exported as PDF instead of DOCX)")
+            else:
+                _download(service.files().get_media(fileId=f["id"]), target)
+        except Exception as exc:  # noqa: BLE001 - one bad file must not abort the sync
+            target.unlink(missing_ok=True)
+            failed.append((f.get("name", f["id"]), str(exc).split("\n")[0]))
+            print(f"  SKIPPED {f.get('name', f['id'])}: {str(exc).splitlines()[0]}")
+            continue
 
         state[f["id"]] = {"mtime": f["modifiedTime"], "name": local_name}
         pulled += 1
@@ -210,7 +239,11 @@ def sync(folder: str, recurse: bool = True) -> int:
 
     SYNC_STATE.parent.mkdir(parents=True, exist_ok=True)
     SYNC_STATE.write_text(json.dumps(state, indent=2))
-    print(f"\nDrive sync complete: {pulled} pulled, {skipped} unchanged.")
+    print(f"\nDrive sync complete: {pulled} pulled, {skipped} unchanged, {len(failed)} failed.")
+    if failed:
+        print("Failed files (left in Drive, not synced):")
+        for name, why in failed:
+            print(f"  - {name}: {why}")
     print("Now run the planner and click Re-index (or commit + push the files).")
     return pulled
 
