@@ -89,8 +89,13 @@ def download(filename: str):
 
 
 def main() -> None:
+    import os
+
     Path(ITINERARIES_DIR).mkdir(parents=True, exist_ok=True)
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    # Default 5050: macOS hijacks port 5000 with the AirPlay Receiver.
+    port = int(os.environ.get("PORT", "5050"))
+    print(f"\nItinerary planner running → http://127.0.0.1:{port}\n")
+    app.run(host="127.0.0.1", port=port, debug=True)
 
 
 if __name__ == "__main__":
