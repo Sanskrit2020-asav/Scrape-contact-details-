@@ -9,3 +9,4 @@ output/gdrive_sync.json
 .gdrive_token.json
 *service-account*.json
 *oauth_client*.json
+_excluded/

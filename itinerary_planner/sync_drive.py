@@ -48,6 +48,31 @@ KEEP_MIME = {
 FOLDER_MIME = "application/vnd.google-apps.folder"
 DOC_EXPORT_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
+# Sensitive / non-itinerary files: never sync these (privacy + matching noise).
+EXCLUDE_KEYWORDS = (
+    "passport",
+    "invoice",
+    "scanned_",
+    "scanned ",
+    "education consultancy",
+    "porter guide assistance",
+    "north nepal travel and trek",
+    "namaste and good evening",
+)
+EXCLUDE_EXACT = {
+    "subject.docx",
+    "passport.pdf",
+    "passport no..pdf",
+    "permit upper mustang.pdf",
+}
+
+
+def is_excluded(name: str) -> bool:
+    low = name.lower()
+    if low in EXCLUDE_EXACT:
+        return True
+    return any(k in low for k in EXCLUDE_KEYWORDS)
+
 
 def _folder_id(value: str) -> str:
     """Accept a raw ID or a Drive folder URL."""
@@ -174,9 +199,12 @@ def sync(folder: str, recurse: bool = True) -> int:
         return chosen
 
     files = _list_folder(service, folder_id, recurse)
-    pulled = skipped = 0
+    pulled = skipped = excluded = 0
     failed: list[tuple[str, str]] = []
     for f in files:
+        if is_excluded(f.get("name", "")):
+            excluded += 1
+            continue
         mime = f["mimeType"]
         if mime in EXPORTABLE:
             ext = EXPORTABLE[mime]
@@ -239,7 +267,10 @@ def sync(folder: str, recurse: bool = True) -> int:
 
     SYNC_STATE.parent.mkdir(parents=True, exist_ok=True)
     SYNC_STATE.write_text(json.dumps(state, indent=2))
-    print(f"\nDrive sync complete: {pulled} pulled, {skipped} unchanged, {len(failed)} failed.")
+    print(
+        f"\nDrive sync complete: {pulled} pulled, {skipped} unchanged, "
+        f"{excluded} excluded (sensitive/non-itinerary), {len(failed)} failed."
+    )
     if failed:
         print("Failed files (left in Drive, not synced):")
         for name, why in failed:
