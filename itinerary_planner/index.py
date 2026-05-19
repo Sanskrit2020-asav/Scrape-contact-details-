@@ -81,3 +81,29 @@ def build_index(force: bool = False) -> list[Itinerary]:
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     CACHE_FILE.write_text(json.dumps({it.filename: asdict(it) for it in results}, indent=2))
     return results
+
+
+_MEM_CACHE: dict[str, object] = {"sig": None, "items": None}
+
+
+def _dir_signature() -> tuple:
+    if not ITINERARIES_DIR.exists():
+        return ()
+    return tuple(
+        sorted(
+            (p.name, _fingerprint(p))
+            for p in ITINERARIES_DIR.iterdir()
+            if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
+        )
+    )
+
+
+def get_index(force: bool = False) -> list[Itinerary]:
+    """Fast accessor: rebuild only when files change (or force). Used per request."""
+    sig = _dir_signature()
+    if not force and _MEM_CACHE["sig"] == sig and _MEM_CACHE["items"] is not None:
+        return _MEM_CACHE["items"]  # type: ignore[return-value]
+    items = build_index(force=force)
+    _MEM_CACHE["sig"] = sig
+    _MEM_CACHE["items"] = items
+    return items

@@ -6,3 +6,9 @@ python-docx>=1.1
 google-api-python-client>=2.0
 google-auth-httplib2>=0.2
 google-auth-oauthlib>=1.2
+
+# Free local semantic search (optional but recommended)
+sentence-transformers>=3.0
+
+# Claude refinement layer (optional — needs ANTHROPIC_API_KEY)
+anthropic>=0.69

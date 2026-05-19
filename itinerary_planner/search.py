@@ -53,10 +53,16 @@ class Match:
     duration_note: str
 
 
-def rank(itineraries: list[Itinerary], brief: ClientBrief, top_n: int = 5) -> list[Match]:
+def rank(
+    itineraries: list[Itinerary],
+    brief: ClientBrief,
+    top_n: int = 5,
+    semantic: dict[str, float] | None = None,
+) -> list[Match]:
+    semantic = semantic or {}
     docs_tokens = [_tokenize(it.text + " " + it.title) for it in itineraries]
     query_tokens = _tokenize(brief.query_text())
-    if not itineraries or not query_tokens:
+    if not itineraries or (not query_tokens and not semantic):
         return []
 
     n_docs = len(itineraries)
@@ -77,12 +83,23 @@ def rank(itineraries: list[Itinerary], brief: ClientBrief, top_n: int = 5) -> li
     q_norm = math.sqrt(sum(v * v for v in q_vec.values())) or 1.0
     q_term_set = set(query_tokens)
 
-    matches: list[Match] = []
+    raw: list[tuple] = []
     for it, tokens in zip(itineraries, docs_tokens):
         d_vec = tfidf_vec(tokens)
         dot = sum(w * d_vec.get(t, 0.0) for t, w in q_vec.items())
         d_norm = math.sqrt(sum(v * v for v in d_vec.values())) or 1.0
         cosine = dot / (q_norm * d_norm)
+        raw.append((it, tokens, cosine))
+
+    kw_max = max((c for _, _, c in raw), default=0.0) or 1.0
+    sem_max = max(semantic.values(), default=0.0) or 1.0
+    blend_kw = 0.45 if semantic else 1.0
+
+    matches: list[Match] = []
+    for it, tokens, cosine in raw:
+        kw_norm = cosine / kw_max
+        sem_norm = semantic.get(it.filename, 0.0) / sem_max
+        relevance = blend_kw * kw_norm + (1.0 - blend_kw) * sem_norm
 
         duration_note = ""
         duration_factor = 1.0
@@ -99,7 +116,7 @@ def rank(itineraries: list[Itinerary], brief: ClientBrief, top_n: int = 5) -> li
         elif it.duration_days:
             duration_note = f"{it.duration_days} days"
 
-        score = cosine * duration_factor
+        score = relevance * duration_factor
         matched = sorted(t for t in q_term_set if t in set(tokens))
         matches.append(Match(it, round(score, 4), matched, duration_note))
 

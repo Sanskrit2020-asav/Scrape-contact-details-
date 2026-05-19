@@ -8,7 +8,9 @@ from flask import (
     Flask, abort, render_template, request, send_from_directory, url_for,
 )
 
-from .index import ITINERARIES_DIR, build_index
+from . import ai as ai_layer
+from .embeddings import available as embeddings_available, semantic_scores
+from .index import ITINERARIES_DIR, get_index
 from .search import ClientBrief, rank
 
 app = Flask(__name__)
@@ -16,8 +18,13 @@ app = Flask(__name__)
 
 @app.route("/", methods=["GET"])
 def home():
-    itineraries = build_index()
-    return render_template("index.html", count=len(itineraries))
+    itineraries = get_index()
+    return render_template(
+        "index.html",
+        count=len(itineraries),
+        semantic=embeddings_available(),
+        ai=ai_layer.available(),
+    )
 
 
 @app.route("/plan", methods=["POST"])
@@ -38,17 +45,46 @@ def plan():
         season=form.get("season", "").strip(),
         notes=form.get("notes", "").strip(),
     )
-    itineraries = build_index()
-    matches = rank(itineraries, brief, top_n=5)
+    itineraries = get_index()
+    sem = semantic_scores(itineraries, brief.query_text())
+    # Local stage: take a wider shortlist so Claude has room to re-rank.
+    shortlist = rank(itineraries, brief, top_n=12, semantic=sem)
+
+    ai_result = ai_layer.refine(brief, shortlist)
+    matches = shortlist[:5]
+    if ai_result and ai_result.ranked:
+        by_name = {m.itinerary.filename: m for m in shortlist}
+        reordered = [by_name[r["filename"]] for r in ai_result.ranked if r["filename"] in by_name]
+        matches = reordered[:5] or matches
+        reasons = {r["filename"]: r["reason"] for r in ai_result.ranked}
+    else:
+        reasons = {}
+
     return render_template(
-        "results.html", brief=brief, matches=matches, total=len(itineraries)
+        "results.html",
+        brief=brief,
+        matches=matches,
+        total=len(itineraries),
+        ai=ai_result,
+        reasons=reasons,
+        semantic_used=bool(sem),
+    )
+
+
+def _home(**extra):
+    return render_template(
+        "index.html",
+        count=len(get_index()),
+        semantic=embeddings_available(),
+        ai=ai_layer.available(),
+        **extra,
     )
 
 
 @app.route("/reindex", methods=["POST"])
 def reindex():
-    build_index(force=True)
-    return render_template("index.html", count=len(build_index()), reindexed=True)
+    get_index(force=True)
+    return _home(reindexed=True)
 
 
 @app.route("/sync-drive", methods=["POST"])
@@ -59,24 +95,18 @@ def sync_drive_route():
         "GDRIVE_FOLDER_ID", ""
     )
     if not folder:
-        return render_template(
-            "index.html",
-            count=len(build_index()),
-            drive_msg="Set GDRIVE_FOLDER_ID or enter a Drive folder ID/URL.",
-        )
+        return _home(drive_msg="Set GDRIVE_FOLDER_ID or enter a Drive folder ID/URL.")
     try:
         from .sync_drive import sync
 
         pulled = sync(folder)
-        build_index(force=True)
+        get_index(force=True)
         msg = f"Synced from Drive: {pulled} new/updated file(s) pulled and indexed."
     except SystemExit as exc:
         msg = f"Drive sync not configured: {exc}"
     except Exception as exc:  # noqa: BLE001 - surface any Drive/auth error to the UI
         msg = f"Drive sync failed: {exc}"
-    return render_template(
-        "index.html", count=len(build_index()), drive_msg=msg
-    )
+    return _home(drive_msg=msg)
 
 
 @app.route("/download/<path:filename>")

@@ -24,7 +24,10 @@
 
   <div class="meta">
     {{ count }} prepared itinerary file(s) indexed.
-    {% if reindexed %}<strong>Re-indexed.</strong>{% endif %}
+    <br>Matching: keyword
+    {% if semantic %}+ semantic AI{% else %}(semantic AI off — install sentence-transformers){% endif %}
+    {% if ai %}+ Claude refinement{% else %}(Claude refinement off — set ANTHROPIC_API_KEY){% endif %}
+    {% if reindexed %}<br><strong>Re-indexed.</strong>{% endif %}
     {% if drive_msg %}<br><strong>{{ drive_msg }}</strong>{% endif %}
     {% if count == 0 %}
       <br>Drop your <code>.pdf</code> / <code>.docx</code> itineraries into the

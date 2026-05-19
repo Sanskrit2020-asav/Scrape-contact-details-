@@ -29,8 +29,23 @@
     {% if brief.budget %}· {{ brief.budget }}{% endif %}
     {% if brief.season %}· {{ brief.season }}{% endif %}
     {% if brief.interests %}· {{ brief.interests }}{% endif %}
-    <br><em>Searched {{ total }} prepared itineraries.</em>
+    <br><em>Searched {{ total }} prepared itineraries
+    {% if semantic_used %}· semantic search on{% endif %}
+    {% if ai and not ai.summary.startswith('(AI refinement unavailable') %}· AI-refined{% endif %}</em>
   </div>
+
+  {% if ai and ai.summary and not ai.summary.startswith('(AI refinement unavailable') %}
+  <div class="card" style="background:#f0f8f4;border-color:#bfe3d0">
+    <strong>AI recommendation</strong>
+    <p class="snip" style="color:#234">{{ ai.summary }}</p>
+    {% if ai.questions %}
+    <strong>Ask the client:</strong>
+    <ul>{% for q in ai.questions %}<li>{{ q }}</li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+  {% elif ai and ai.summary.startswith('(AI refinement unavailable') %}
+  <div class="brief">{{ ai.summary }} — showing local results.</div>
+  {% endif %}
 
   {% if not matches %}
     <div class="none">
@@ -45,6 +60,9 @@
     <span class="score">match {{ (m.score * 100) | round(0, 'floor') | int }}</span>
     <h2>{{ m.itinerary.title }}</h2>
     <div class="dur">{{ m.duration_note or "duration not detected" }}</div>
+    {% if reasons.get(m.itinerary.filename) %}
+    <p class="snip" style="color:#0a6"><strong>Why:</strong> {{ reasons[m.itinerary.filename] }}</p>
+    {% endif %}
     {% if m.matched_terms %}
     <div class="tags">
       {% for t in m.matched_terms %}<span>{{ t }}</span>{% endfor %}
