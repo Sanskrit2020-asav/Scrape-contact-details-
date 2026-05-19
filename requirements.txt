@@ -1,0 +1,17 @@
+flask>=3.0
+pypdf>=4.0
+python-docx>=1.1
+
+# Google Drive sync (itinerary_planner.sync_drive)
+google-api-python-client>=2.0
+google-auth-httplib2>=0.2
+google-auth-oauthlib>=1.2
+
+# Free local semantic search (optional but recommended)
+sentence-transformers>=3.0
+
+# AI refinement layer (optional). Install the one matching your provider:
+#   OpenAI  -> needs OPENAI_API_KEY
+#   Claude  -> needs ANTHROPIC_API_KEY
+openai>=1.40
+anthropic>=0.69

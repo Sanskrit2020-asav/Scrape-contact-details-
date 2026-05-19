@@ -74,3 +74,76 @@ LIMIT=10 python3 scripts/enrich_apify.py
   `api.whatsapp.com/send?phone=` link is present in the Page data or on the
   linked website. A bare `Phone` value in a trekking market is usually a
   WhatsApp number too.
+
+---
+
+# Itinerary Planner (separate tool)
+
+A local web app that indexes your **prepared itineraries** (`.pdf`, `.docx`,
+`.txt`, `.md`) and matches them to a client's brief. No web scraping in v1 —
+it ranks against your own files.
+
+## Setup
+
+```
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## Add your itineraries
+
+Drop your prepared itinerary files into the `itineraries/` folder. (Cloud
+sessions can't reach your Mac or Google Drive directly, so the files must be
+committed/copied here.) Three sample `.docx` files ship as a demo — delete
+them once you add your own.
+
+## Run
+
+```
+. .venv/bin/activate
+python -m itinerary_planner.app
+```
+
+Open http://127.0.0.1:5000 — fill in the client's destination, trip length,
+travelers, budget, season, and interests. You get the top 5 ranked matches
+with a match score, the terms that matched, a snippet, and a download link.
+Use **Re-index** after adding or changing files.
+
+## How matching works
+
+Pure-Python TF-IDF cosine similarity over each itinerary's text, with a
+duration-proximity boost (a "14 day" request favours ~14-day itineraries).
+No external ML dependency.
+
+## Sync itineraries from Google Drive
+
+There is no pre-existing Drive connection — the connector authenticates with
+**your** Google credential. Run it where you have that credential (your Mac);
+the cloud session cannot reach your Drive.
+
+### One-time credential setup (pick one)
+
+- **Service account** (recommended for a folder you own / shared with it):
+  create a service account in Google Cloud, enable the Drive API, download
+  its JSON key, and share the Drive folder with the service account's email.
+  ```
+  export GDRIVE_SERVICE_ACCOUNT=/path/to/service-account.json
+  ```
+- **OAuth Desktop client** (uses your own Google login, opens a browser once):
+  ```
+  export GDRIVE_OAUTH_CLIENT=/path/to/oauth_client.json
+  ```
+
+### Sync
+
+```
+. .venv/bin/activate
+python -m itinerary_planner.sync_drive --folder "https://drive.google.com/drive/folders/XXXX"
+# or: export GDRIVE_FOLDER_ID=XXXX  then  python -m itinerary_planner.sync_drive
+```
+
+Pulls PDF/DOCX/TXT/MD (Google Docs are exported to .docx) into
+`itineraries/`, skips unchanged files, then `git commit && git push` so the
+files are available everywhere. The web app also has a **Sync from Drive**
+button that does the same when credentials are configured on the host.
