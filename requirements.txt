@@ -10,5 +10,8 @@ google-auth-oauthlib>=1.2
 # Free local semantic search (optional but recommended)
 sentence-transformers>=3.0
 
-# Claude refinement layer (optional — needs ANTHROPIC_API_KEY)
+# AI refinement layer (optional). Install the one matching your provider:
+#   OpenAI  -> needs OPENAI_API_KEY
+#   Claude  -> needs ANTHROPIC_API_KEY
+openai>=1.40
 anthropic>=0.69
