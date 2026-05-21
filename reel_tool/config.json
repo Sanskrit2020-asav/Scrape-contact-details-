@@ -1,0 +1,25 @@
+{
+  "niche": "Nepal trekking and adventure travel business",
+  "scoring_guidance": "Score clips on suitability for a 9:16 Instagram/TikTok reel promoting a Nepal trekking business. Reward: sweeping mountain vistas (Annapurna, Everest, Manaslu, Langtang), clients smiling/celebrating at viewpoints, prayer flags, sunrise/sunset alpenglow, suspension bridges, traditional villages, action shots (hiking, river crossings), tea house culture. Penalize: blurry/shaky beyond style, dark indoor shots, unflattering angles of clients, anything with sensitive content. Bonus for clips that work without sound and have clear vertical-friendly composition.",
+  "target_duration_seconds": 28,
+  "min_segment_seconds": 2.0,
+  "max_segment_seconds": 5.0,
+  "max_clips_in_reel": 8,
+  "min_score_to_include": 6,
+  "output_resolution": "1080x1920",
+  "output_fps": 30,
+  "video_bitrate_crf": 20,
+  "music_volume": 0.85,
+  "hook_duration_seconds": 1.5,
+  "hook_font_size": 84,
+  "hook_font_path_candidates": [
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/System/Library/Fonts/HelveticaNeue.ttc",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/Library/Fonts/Arial Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf"
+  ],
+  "scoring_model": "claude-haiku-4-5",
+  "writing_model": "claude-opus-4-7",
+  "frames_per_clip": 4
+}
