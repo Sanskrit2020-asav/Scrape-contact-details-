@@ -19,11 +19,11 @@
     "/Library/Fonts/Arial Bold.ttf",
     "C:/Windows/Fonts/arialbd.ttf"
   ],
-  "scoring_model": "claude-haiku-4-5",
-  "writing_model": "claude-opus-4-7",
+  "scoring_model": "gpt-4o-mini",
+  "writing_model": "gpt-4o",
   "frames_per_clip": 4,
-  "deep_analysis_model": "claude-haiku-4-5",
-  "planning_model": "claude-opus-4-7",
+  "deep_analysis_model": "gpt-4o-mini",
+  "planning_model": "gpt-4o",
   "concepts_per_brief": 4,
   "voiceover": {
     "service": "elevenlabs",

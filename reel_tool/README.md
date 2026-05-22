@@ -53,15 +53,19 @@ cd reel_tool
 pip3 install -r requirements.txt
 ```
 
-### 3. Get an Anthropic API key
+### 3. Get an OpenAI API key
 
-Sign up at <https://console.anthropic.com/>, create a key, then:
+Sign up at <https://platform.openai.com/>, create a key at
+*API keys → Create new secret key*, then:
 
 ```sh
-export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
 ```
 
 (Add that line to your `~/.zshrc` or `~/.bashrc` to make it persistent.)
+
+You'll need a few dollars of pre-paid credit on the account — go to
+*Settings → Billing*. $5 will last you many dozens of briefs.
 
 ### 4. Get an ElevenLabs API key (only for voiceovers)
 
@@ -143,7 +147,7 @@ brief.
 
 The prompt that drives this lives at `prompts/editing_brief.md` — edit
 it to retune the creative direction. You can also paste it directly
-into claude.ai if you want to iterate interactively before committing
+into ChatGPT if you want to iterate interactively before committing
 to a render.
 
 #### Workflow B — Auto-rendered reel
@@ -196,12 +200,14 @@ All knobs live in `config.json`. The ones you'll touch most:
 
 ## Cost
 
-Each run hits the Claude API:
+Each run hits the OpenAI API:
 
-- ~$0.001 per clip scored (Haiku 4.5 with 4 frames)
-- ~$0.005 per reel for hook + caption (Opus 4.7, one call)
+- ~$0.001 per clip scored (gpt-4o-mini with 4 frames at "low" detail)
+- ~$0.01 per reel for hook + caption (gpt-4o, one call)
+- For `plan.py`: ~$0.05 per brief (gpt-4o, one big creative call)
 
-So a run with 30 clips ≈ $0.03 in API costs. Negligible.
+So a 30-clip planning run ≈ $0.04 in API costs. Voiceover (ElevenLabs)
+is on its own meter — free tier covers ~10 reels/month.
 
 ## Troubleshooting
 

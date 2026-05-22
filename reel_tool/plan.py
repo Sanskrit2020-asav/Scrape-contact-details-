@@ -2,7 +2,7 @@
 """Generate a creative brief from raw clips.
 
 Scans reel_input/clips/, runs deep visual analysis on each clip with
-Claude vision, then asks Opus 4.7 (the creative director) to produce
+GPT-4o-mini vision, then asks GPT-4o (the creative director) to produce
 multiple complete reel concepts with voiceover scripts, CapCut color
 correction recipes, and effect suggestions.
 
@@ -11,7 +11,7 @@ Outputs to reel_output/:
   brief_YYYYMMDD_HHMMSS.json  - structured data (used by voiceover.py)
 
 Usage:
-  export ANTHROPIC_API_KEY=sk-ant-...
+  export OPENAI_API_KEY=sk-...
   python3 plan.py
 """
 
@@ -27,7 +27,7 @@ import tempfile
 import time
 from pathlib import Path
 
-import anthropic
+from openai import OpenAI, APIError
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
@@ -132,7 +132,7 @@ ANALYSIS_SYSTEM = (
 
 
 def analyze_clip(
-    client: anthropic.Anthropic,
+    client: OpenAI,
     clip: Path,
     duration: float,
     frames: list[tuple[float, Path]],
@@ -145,8 +145,11 @@ def analyze_clip(
     for t, fp in frames:
         b64 = base64.standard_b64encode(fp.read_bytes()).decode()
         content.append({
-            "type": "image",
-            "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{b64}",
+                "detail": "low",
+            },
         })
     timestamps = ", ".join(f"{t:.1f}s" for t, _ in frames)
     content.append({
@@ -160,20 +163,27 @@ def analyze_clip(
     })
 
     try:
-        resp = client.messages.create(
+        resp = client.chat.completions.create(
             model=cfg["deep_analysis_model"],
             max_tokens=1024,
-            system=ANALYSIS_SYSTEM,
-            messages=[{"role": "user", "content": content}],
-            output_config={
-                "format": {"type": "json_schema", "schema": CLIP_ANALYSIS_SCHEMA}
+            messages=[
+                {"role": "system", "content": ANALYSIS_SYSTEM},
+                {"role": "user", "content": content},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "clip_analysis",
+                    "strict": True,
+                    "schema": CLIP_ANALYSIS_SCHEMA,
+                },
             },
         )
-    except anthropic.APIError as e:
+    except APIError as e:
         print(f"  ! API error on {clip.name}: {e}", file=sys.stderr)
         return None
 
-    text = next((b.text for b in resp.content if b.type == "text"), None)
+    text = resp.choices[0].message.content
     if not text:
         return None
     try:
@@ -260,7 +270,7 @@ BRIEF_SCHEMA = {
 
 
 def plan_brief(
-    client: anthropic.Anthropic,
+    client: OpenAI,
     catalog: list[dict],
     cfg: dict,
 ) -> dict:
@@ -278,14 +288,23 @@ def plan_brief(
         f"Cinematic British narrator via ElevenLabs."
     )
 
-    resp = client.messages.create(
+    resp = client.chat.completions.create(
         model=cfg["planning_model"],
         max_tokens=16000,
-        system=system,
-        messages=[{"role": "user", "content": user_msg}],
-        output_config={"format": {"type": "json_schema", "schema": BRIEF_SCHEMA}},
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user_msg},
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "reel_brief",
+                "strict": True,
+                "schema": BRIEF_SCHEMA,
+            },
+        },
     )
-    text = next((b.text for b in resp.content if b.type == "text"), None)
+    text = resp.choices[0].message.content
     if not text:
         sys.exit("error: planner returned no text")
     return json.loads(text)
@@ -366,8 +385,8 @@ def main() -> None:
     require_binary("ffmpeg")
     require_binary("ffprobe")
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        sys.exit("error: ANTHROPIC_API_KEY not set.")
+    if not os.environ.get("OPENAI_API_KEY"):
+        sys.exit("error: OPENAI_API_KEY not set.")
 
     cfg = json.loads(CONFIG_PATH.read_text())
 
@@ -383,7 +402,7 @@ def main() -> None:
 
     print(f"Analyzing {len(clips)} clip(s) (deep visual pass)...")
 
-    client = anthropic.Anthropic()
+    client = OpenAI()
     catalog: list[dict] = []
 
     with tempfile.TemporaryDirectory(prefix="plan_frames_") as td:
@@ -405,7 +424,7 @@ def main() -> None:
     if not catalog:
         sys.exit("error: no clips analyzed successfully.")
 
-    print(f"\nDirecting reel concepts (Opus 4.7)...")
+    print(f"\nDirecting reel concepts ({cfg['planning_model']})...")
     brief = plan_brief(client, catalog, cfg)
     print(f"  {len(brief['concepts'])} concept(s) returned")
     for c in brief["concepts"]:

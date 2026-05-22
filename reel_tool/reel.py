@@ -3,7 +3,7 @@
 
 Pipeline:
   1. Scan reel_input/clips/ for video files
-  2. For each clip: extract sample frames, ask Claude (vision) to score it
+  2. For each clip: extract sample frames, ask GPT-4o-mini (vision) to score it
      for the configured niche and pick the strongest segment
   3. Pick the top-scoring clips up to target duration
   4. ffmpeg: trim, scale/crop to 9:16, concat, overlay AI-written hook,
@@ -11,7 +11,7 @@ Pipeline:
   5. Write the post caption + hashtags next to the .mp4
 
 Usage:
-  export ANTHROPIC_API_KEY=sk-ant-...
+  export OPENAI_API_KEY=sk-...
   python3 reel.py
 """
 
@@ -29,7 +29,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import anthropic
+from openai import OpenAI, APIError
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
@@ -103,7 +103,7 @@ def extract_frames(path: Path, n: int, tmpdir: Path) -> list[Path]:
     return frames
 
 
-# ---------- claude scoring ----------
+# ---------- llm scoring ----------
 
 SCORE_SCHEMA = {
     "type": "object",
@@ -120,7 +120,7 @@ SCORE_SCHEMA = {
 
 
 def score_clip(
-    client: anthropic.Anthropic,
+    client: OpenAI,
     clip_path: Path,
     duration: float,
     frame_paths: list[Path],
@@ -133,8 +133,11 @@ def score_clip(
     for fp in frame_paths:
         b64 = base64.standard_b64encode(fp.read_bytes()).decode()
         content.append({
-            "type": "image",
-            "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:image/jpeg;base64,{b64}",
+                "detail": "low",
+            },
         })
     content.append({
         "type": "text",
@@ -162,18 +165,27 @@ def score_clip(
     )
 
     try:
-        resp = client.messages.create(
+        resp = client.chat.completions.create(
             model=cfg["scoring_model"],
             max_tokens=512,
-            system=system_prompt,
-            messages=[{"role": "user", "content": content}],
-            output_config={"format": {"type": "json_schema", "schema": SCORE_SCHEMA}},
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "clip_score",
+                    "strict": True,
+                    "schema": SCORE_SCHEMA,
+                },
+            },
         )
-    except anthropic.APIError as e:
+    except APIError as e:
         print(f"  ! API error scoring {clip_path.name}: {e}", file=sys.stderr)
         return None
 
-    text = next((b.text for b in resp.content if b.type == "text"), None)
+    text = resp.choices[0].message.content
     if not text:
         return None
     try:
@@ -243,10 +255,10 @@ def pick_best(scored: list[ClipScore], cfg: dict) -> list[ClipScore]:
     return chosen
 
 
-# ---------- claude writing ----------
+# ---------- llm writing ----------
 
 def write_hook_and_caption(
-    client: anthropic.Anthropic,
+    client: OpenAI,
     selected: list[ClipScore],
     cfg: dict,
 ) -> tuple[str, str]:
@@ -278,13 +290,20 @@ def write_hook_and_caption(
         "no commas."
     )
 
-    resp = client.messages.create(
+    resp = client.chat.completions.create(
         model=cfg["writing_model"],
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
-        output_config={"format": {"type": "json_schema", "schema": schema}},
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "social_copy",
+                "strict": True,
+                "schema": schema,
+            },
+        },
     )
-    text = next((b.text for b in resp.content if b.type == "text"), None)
+    text = resp.choices[0].message.content
     if not text:
         return "ADVENTURE AWAITS", "Come trek with us in Nepal. DM to plan your trip."
     data = json.loads(text)
@@ -392,11 +411,11 @@ def main() -> None:
     require_binary("ffmpeg")
     require_binary("ffprobe")
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    if not os.environ.get("OPENAI_API_KEY"):
         sys.exit(
-            "error: ANTHROPIC_API_KEY not set.\n"
-            "Get one at https://console.anthropic.com/ then:\n"
-            "  export ANTHROPIC_API_KEY=sk-ant-..."
+            "error: OPENAI_API_KEY not set.\n"
+            "Get one at https://platform.openai.com/api-keys then:\n"
+            "  export OPENAI_API_KEY=sk-..."
         )
 
     cfg = json.loads(CONFIG_PATH.read_text())
@@ -413,7 +432,7 @@ def main() -> None:
 
     print(f"Found {len(clips)} clip(s) in {CLIPS_DIR.name}/")
 
-    client = anthropic.Anthropic()
+    client = OpenAI()
     scored: list[ClipScore] = []
 
     with tempfile.TemporaryDirectory(prefix="reel_frames_") as td:

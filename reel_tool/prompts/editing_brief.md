@@ -2,7 +2,7 @@
 
 This is the system prompt used by `plan.py` to turn raw footage into
 production-ready reel briefs. You can also paste it directly into
-claude.ai if you'd rather work interactively.
+ChatGPT if you'd rather work interactively.
 
 ---
 
