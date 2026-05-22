@@ -210,26 +210,41 @@ BRIEF_SCHEMA = {
                                 "start_sec": {"type": "number"},
                                 "duration_sec": {"type": "number"},
                                 "on_screen_purpose": {"type": "string"},
+                                "on_screen_text": {"type": "string"},
                                 "color_correction": {"type": "string"},
                                 "effect_or_transition": {"type": "string"},
                             },
                             "required": [
                                 "clip_filename", "start_sec", "duration_sec",
-                                "on_screen_purpose", "color_correction",
-                                "effect_or_transition",
+                                "on_screen_purpose", "on_screen_text",
+                                "color_correction", "effect_or_transition",
                             ],
                             "additionalProperties": False,
                         },
                     },
                     "voiceover_script": {"type": "string"},
                     "music_vibe": {"type": "string"},
+                    "gear_callouts": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "item": {"type": "string"},
+                                "context": {"type": "string"},
+                            },
+                            "required": ["item", "context"],
+                            "additionalProperties": False,
+                        },
+                    },
                     "cta": {"type": "string"},
+                    "hashtags": {"type": "string"},
                     "estimated_duration_sec": {"type": "number"},
                 },
                 "required": [
                     "title", "core_idea", "target_audience", "hook_text",
                     "hook_visual_clip", "storyboard", "voiceover_script",
-                    "music_vibe", "cta", "estimated_duration_sec",
+                    "music_vibe", "gear_callouts", "cta", "hashtags",
+                    "estimated_duration_sec",
                 ],
                 "additionalProperties": False,
             },
@@ -295,18 +310,35 @@ def to_markdown(brief: dict, catalog: list[dict]) -> str:
         lines.append(f"**CTA.** {c['cta']}\n")
 
         lines.append("\n### Storyboard\n")
-        lines.append("| # | Clip | In | Dur | On-screen | Color (CapCut Adjust) | Effect |")
-        lines.append("|---|---|---|---|---|---|---|")
+        lines.append(
+            "| # | Clip | In | Dur | On-screen text | "
+            "On-screen purpose | Color (CapCut Adjust) | Effect |"
+        )
+        lines.append("|---|---|---|---|---|---|---|---|")
         for j, s in enumerate(c["storyboard"], 1):
+            ost = s.get("on_screen_text", "").strip()
+            ost_cell = f"`{ost}`" if ost else "—"
             lines.append(
                 f"| {j} | `{s['clip_filename']}` | "
                 f"{s['start_sec']:.1f}s | {s['duration_sec']:.1f}s | "
-                f"{s['on_screen_purpose']} | {s['color_correction']} | "
-                f"{s['effect_or_transition']} |"
+                f"{ost_cell} | {s['on_screen_purpose']} | "
+                f"{s['color_correction']} | {s['effect_or_transition']} |"
             )
 
         lines.append("\n### Voiceover script\n")
         lines.append(f"```\n{c['voiceover_script']}\n```\n")
+
+        gear = c.get("gear_callouts", [])
+        if gear:
+            lines.append("\n### Gear callouts\n")
+            for g in gear:
+                lines.append(f"- **{g['item']}** — {g['context']}")
+            lines.append("")
+
+        hashtags = c.get("hashtags", "").strip()
+        if hashtags:
+            lines.append("\n### Caption hashtags\n")
+            lines.append(f"```\n{hashtags}\n```\n")
 
     lines.append("\n---\n\n## Unused footage notes\n")
     lines.append(brief.get("unused_clip_notes", "_(none)_") + "\n")

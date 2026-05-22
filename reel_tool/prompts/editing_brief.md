@@ -89,6 +89,32 @@ Use real CapCut features. Common ones:
 3. Speed effects and zooms only when they add narrative weight (revealing
    the peak, slowing a smile, ramping into an action moment).
 
+## On-screen text overlays (beyond the hook)
+
+Most reels benefit from 2-3 small text overlays in the body, not just the
+opening hook. Use them to anchor the viewer in space, time, or stakes —
+information the visual alone can't convey.
+
+**Good uses:**
+
+- Day markers — `Day 4`, `Day 9 — summit morning`
+- Location names — `Manang`, `Thorong La`, `Tatopani`
+- Elevation — `5,416 m`, `3,540 m`, `Above 4,000 m`
+- Time of day — `4 AM start`, `Golden hour`
+- Stakes / counts — `12 days. 0 showers.`, `−15 °C tonight`
+- One-word emotional beats — `Doubt`, `Finally`, `Home`
+
+**Rules:**
+
+- 1-4 words max per overlay. If you need a sentence, the voiceover
+  should say it instead.
+- 2-3 overlays per reel beyond the hook. More than that, and the reel
+  starts feeling like a slideshow.
+- Don't repeat what the VO is saying. Overlays add information, not
+  duplicate it.
+- For storyboard beats that don't need an overlay, return an empty
+  string for `on_screen_text`.
+
 ## Voiceover scripts
 
 - Written for a **Cinematic British narrator** — documentary tone,
@@ -105,6 +131,60 @@ Use real CapCut features. Common ones:
 - **End with a soft CTA in the voice**, not a hard sell. "When you're ready"
   beats "Book today".
 
+## Gear callouts
+
+For each concept, identify 2-5 specific pieces of gear that either
+**appear in the footage** or are **genuinely worth mentioning** for the
+concept's angle and audience. Trekking content overperforms when the
+gear is real and earned, not Amazon-affiliate spam.
+
+**Good gear callouts (`item` → `context`):**
+
+- "Down jacket (rated to −20 °C)" → "Worn in summit-morning clip,
+  visibly puffy at altitude — communicates real cold without saying it"
+- "Trekking poles" → "Helps frame the descent shots and is a real
+  knee-saver question new trekkers ask about"
+- "Crampons / micro-spikes" → "Only visible briefly on Thorong La
+  approach; worth a callout because most clients ask if they'll need
+  them"
+- "Tea-house slippers" → "Cultural detail; differentiates from generic
+  trek content"
+
+**Bad gear callouts:**
+
+- "Backpack" — too generic, every trekker has one
+- "Sunglasses" — assumed
+- Affiliate-bait padding ("the BEST jacket EVER")
+
+For pure cinematic concepts where no gear is visible or relevant,
+return an empty array.
+
+## Hashtags
+
+For each concept, produce 18-25 hashtags space-separated as a single
+string (no commas). Mix four buckets:
+
+1. **Niche / route-specific (5-8):** `#nepaltrekking #abctrek
+   #annapurnacircuit #everestbasecamp #manaslucircuit #langtangvalley
+   #threepassestrek #tilicholake`
+2. **Location (4-6):** `#nepal #himalayas #annapurna #everest
+   #kathmandu #pokhara`
+3. **Travel / adventure (5-8):** `#solotravel #adventuretravel
+   #hikingadventures #mountainlife #travelphotography
+   #wanderlust #offthebeatenpath`
+4. **Brand / community (2-3):** `#northnepaltrek #trekkinginnepal
+   #responsibletravel`
+
+Match the bucket weights to the concept. A cinematic Annapurna sunrise
+reel should lean heavier on niche + location. A "what to pack"
+practical reel should lean on travel/adventure plus 1-2 specific gear
+tags like `#trekkinggear #gearguide`. A behind-the-scenes guide reel
+should lean on brand/community.
+
+Lowercase where idiomatic. No emoji. No hashtag-stuffing-style spam
+like `#fyp #foryou #viral` — those don't help on Instagram and look
+desperate.
+
 ## What to produce
 
 For each concept, return:
@@ -116,14 +196,18 @@ For each concept, return:
 - `hook_text` — 3-5 words, ALL CAPS, no punctuation except `!`
 - `hook_visual_clip` — filename of the opening shot
 - `storyboard` — array of clips with: `clip_filename`, `start_sec`,
-  `duration_sec`, `on_screen_purpose`, `color_correction` (specific
+  `duration_sec`, `on_screen_purpose`, `on_screen_text` (1-4 word
+  overlay for this beat or empty string), `color_correction` (specific
   CapCut Adjust values), `effect_or_transition` (named CapCut feature
   or "none")
 - `voiceover_script` — full script with pacing marks
 - `music_vibe` — genre + BPM range + when energy enters
   (e.g. "Ambient cinematic, 70-80 BPM, soft strings only until 0:15,
   then warm percussion enters")
+- `gear_callouts` — array of `{item, context}` for 2-5 specific gear
+  items worth surfacing (or empty array for pure cinematic concepts)
 - `cta` — specific to audience and concept
+- `hashtags` — 18-25 hashtags, space-separated single string, no commas
 - `estimated_duration_sec`
 
 After the concepts, return:
