@@ -1,14 +1,33 @@
-# Auto Reel Tool
+# Reel Tool — North Nepal Trek
 
-Generate a 9:16 Instagram/TikTok reel from a folder of raw clips. Claude
-vision scores each clip for the configured niche, picks the strongest
-moments, and ffmpeg stitches them into a polished video with a punchy
-text hook, background music, and an AI-written caption + hashtags.
+Two workflows, same `reel_input/clips/` folder:
 
-Built for **North Nepal Trek** but the niche is configurable — edit
-`config.json` to retarget for fitness, food, real estate, etc.
+| Tool | What it does | When to use |
+| --- | --- | --- |
+| **`reel.py`** | Auto-renders a finished 9:16 MP4 + IG caption | Fast: post-and-go, no manual editing |
+| **`plan.py` + `voiceover.py`** | Produces a creative brief (multiple reel concepts, color-correction recipes, CapCut effect suggestions, voiceover scripts) + generates the voiceover MP3s | Polish: you finish in CapCut yourself, AI does the thinking |
 
-## What you get per run
+Both tools target **North Nepal Trek** content. Tune `config.json` for
+other niches.
+
+## What you get from `plan.py`
+
+- `reel_output/brief_YYYYMMDD_HHMMSS.md` — full production brief with
+  4 reel concepts, each containing:
+  - Hook (visual + text overlay)
+  - Storyboard table (clip / in-point / duration / on-screen purpose /
+    CapCut Adjust values / suggested effect)
+  - Voiceover script with pacing marks
+  - Music vibe, CTA, target audience
+- `reel_output/brief_YYYYMMDD_HHMMSS.json` — structured data for
+  `voiceover.py`
+- A footage catalog showing every clip's score, mood, lighting, and
+  best moment — useful for spotting what content you have
+
+Then `voiceover.py` reads the brief and renders one MP3 per concept,
+ready to drop into CapCut.
+
+## What you get from `reel.py`
 
 - `reel_output/reel_YYYYMMDD_HHMMSS.mp4` — 1080×1920, ready to upload
 - `reel_output/reel_YYYYMMDD_HHMMSS.txt` — caption + hashtags to paste
@@ -44,7 +63,24 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 (Add that line to your `~/.zshrc` or `~/.bashrc` to make it persistent.)
 
-### 4. Drop in background music
+### 4. Get an ElevenLabs API key (only for voiceovers)
+
+Sign up at <https://elevenlabs.io/> — free tier gives 10k chars/month
+(~10 reels of voiceover). Get the key from Profile → API Keys, then:
+
+```sh
+export ELEVENLABS_API_KEY=...
+```
+
+The default voice is set to **Daniel** (Cinematic British narrator) in
+`config.json`. To pick a different voice:
+
+```sh
+python3 voiceover.py --list-voices
+# copy a voice_id, paste into config.json → voiceover.voice_id
+```
+
+### 5. Drop in background music
 
 Copy 1+ royalty-free `.mp3` / `.m4a` tracks into `reel_input/music/`.
 Suggested sources: YouTube Audio Library, Epidemic Sound (paid),
@@ -78,7 +114,39 @@ your Mac. Then move them from `~/Downloads` into `reel_input/clips/`.
 3. In File Explorer: `This PC → Apple iPhone → Internal Storage → DCIM`
 4. Copy `.MOV` files into `reel_tool\reel_input\clips\`
 
-### 2. Run it
+### 2. Pick a workflow
+
+#### Workflow A — Creative brief + voiceover (recommended for polish)
+
+```sh
+cd reel_tool
+python3 plan.py
+```
+
+This analyzes every clip (Haiku 4.5 vision), then calls Opus 4.7 as
+your creative director to produce 4 reel concepts. Each concept comes
+with a storyboard, per-clip CapCut color-correction recipe, suggested
+effects/transitions by name, voiceover script, and music brief.
+
+Review the markdown brief in `reel_output/`. When you've picked a
+concept, render its voiceover:
+
+```sh
+python3 voiceover.py reel_output/brief_*.json --concept 1
+```
+
+(Drop `--concept N` to render all of them. Use `--dry-run` first to see
+word counts and previews without burning ElevenLabs credits.)
+
+Then open CapCut, import your clips + the voiceover MP3, and follow the
+brief.
+
+The prompt that drives this lives at `prompts/editing_brief.md` — edit
+it to retune the creative direction. You can also paste it directly
+into claude.ai if you want to iterate interactively before committing
+to a render.
+
+#### Workflow B — Auto-rendered reel
 
 ```sh
 cd reel_tool
