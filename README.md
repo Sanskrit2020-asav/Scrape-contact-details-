@@ -1,3 +1,15 @@
+This repository contains two independent tools:
+
+1. **Intelligent Sales Assistant** for North Nepal Travel & Trek — an AI
+   consultant that estimates trek costs, retrieves company knowledge (RAG),
+   researches the website/web, reasons like a 15-year Nepal trekking expert, and
+   drafts quotations and emails. See **[`docs/sales_assistant.md`](docs/sales_assistant.md)**
+   and the `sales_assistant/` package. Quick start:
+   `python -m sales_assistant.cli estimate --trek "Everest Base Camp" --days 14 --pax 2`
+2. **Facebook contact scraper** (below) — the original lead-enrichment pipeline.
+
+---
+
 # Scrape Facebook Contact Details
 
 Pull email / website / WhatsApp / phone for a list of Facebook profiles and
