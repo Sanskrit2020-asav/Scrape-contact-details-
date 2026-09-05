@@ -25,6 +25,7 @@ from .models import (
     KnowledgeItem,
     Post,
     Reply,
+    UsageRecord,
 )
 
 log = get_logger(__name__)
@@ -469,8 +470,9 @@ class SettingsRepository:
                      max_comments_per_run, max_posts_per_run, openai_model,
                      facebook_enabled, instagram_enabled,
                      facebook_comments_actor, facebook_posts_actor, facebook_reply_actor,
-                     instagram_comments_actor, instagram_posts_actor, instagram_reply_actor)
-                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     instagram_comments_actor, instagram_posts_actor, instagram_reply_actor,
+                     daily_token_budget, input_cost_per_million, output_cost_per_million)
+                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(defaults.dry_run), int(defaults.human_approval_required),
@@ -482,6 +484,8 @@ class SettingsRepository:
                     defaults.facebook_comments_actor, defaults.facebook_posts_actor,
                     defaults.facebook_reply_actor, defaults.instagram_comments_actor,
                     defaults.instagram_posts_actor, defaults.instagram_reply_actor,
+                    int(defaults.daily_token_budget), float(defaults.input_cost_per_million),
+                    float(defaults.output_cost_per_million),
                 ),
             )
         return self.get()
@@ -510,6 +514,87 @@ class SettingsRepository:
             tuple(updates.values()),
         )
         return self.get()
+
+
+class UsageRepository:
+    """Token accounting.
+
+    Recorded for *every* call, including failed and retried ones — a retry
+    costs real money whether or not its output was usable, so a ledger that
+    only counted successes would understate the bill.
+    """
+
+    def __init__(self, db: Database):
+        self.db = db
+
+    def record(self, usage: UsageRecord) -> UsageRecord:
+        with self.db.transaction() as conn:
+            cur = conn.execute(
+                """
+                INSERT INTO ai_usage
+                    (comment_id, platform, model, input_tokens, output_tokens,
+                     total_tokens, attempts, request_id, response_id, succeeded)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    usage.comment_id, usage.platform, usage.model,
+                    usage.input_tokens, usage.output_tokens, usage.total_tokens,
+                    usage.attempts, usage.request_id, usage.response_id,
+                    int(usage.succeeded),
+                ),
+            )
+            usage.id = int(cur.lastrowid)
+        return usage
+
+    def totals(self, *, since_hours: int | None = None) -> dict[str, int]:
+        """Aggregate usage, optionally limited to the last ``since_hours``."""
+        clause, params = "", ()
+        if since_hours is not None:
+            clause = "WHERE created_at >= datetime('now', ?)"
+            params = (f"-{int(since_hours)} hours",)
+        row = self.db.query_one(
+            f"""
+            SELECT COALESCE(SUM(input_tokens), 0)  AS input_tokens,
+                   COALESCE(SUM(output_tokens), 0) AS output_tokens,
+                   COALESCE(SUM(total_tokens), 0)  AS total_tokens,
+                   COUNT(*)                        AS calls,
+                   COALESCE(SUM(CASE WHEN succeeded = 0 THEN 1 ELSE 0 END), 0) AS failed_calls
+              FROM ai_usage {clause}
+            """,
+            params,
+        )
+        return {k: int(row[k]) for k in row.keys()} if row else {}
+
+    def tokens_last_24h(self) -> int:
+        return self.totals(since_hours=24).get("total_tokens", 0)
+
+    def estimated_cost(self, totals: dict[str, int], settings: AgentSettings) -> float:
+        """Cost in USD from the operator-configured rates.
+
+        Returns 0.0 when no rates are set, and the dashboard says "not
+        configured" rather than showing a made-up figure.
+        """
+        return round(
+            (totals.get("input_tokens", 0) / 1_000_000) * settings.input_cost_per_million
+            + (totals.get("output_tokens", 0) / 1_000_000) * settings.output_cost_per_million,
+            4,
+        )
+
+    def budget_status(self, settings: AgentSettings) -> dict[str, Any]:
+        """Where spend stands against the configured daily cap."""
+        used = self.tokens_last_24h()
+        budget = int(settings.daily_token_budget or 0)
+        return {
+            "tokens_last_24h": used,
+            "daily_token_budget": budget,
+            "enabled": budget > 0,
+            "exceeded": budget > 0 and used >= budget,
+            "remaining": max(0, budget - used) if budget > 0 else None,
+        }
+
+    def recent(self, limit: int = 50) -> list[UsageRecord]:
+        rows = self.db.query("SELECT * FROM ai_usage ORDER BY id DESC LIMIT ?", (limit,))
+        return [_row_to(UsageRecord, r, bools=("succeeded",)) for r in rows]
 
 
 class AuditRepository:
@@ -567,4 +652,5 @@ class Repositories:
         self.replies = ReplyRepository(db)
         self.knowledge = KnowledgeRepository(db)
         self.settings = SettingsRepository(db)
+        self.usage = UsageRepository(db)
         self.audit = AuditRepository(db)

@@ -19,7 +19,7 @@ from typing import Any
 from ..ai import AIDecisionService, build_context
 from ..apify import ApifyError
 from ..config import Settings, get_settings
-from ..database.models import AgentSettings, Comment, CommentStatus, Post, Reply
+from ..database.models import AgentSettings, Comment, CommentStatus, Post, Reply, UsageRecord
 from ..database.repositories import Repositories
 from ..knowledge import KnowledgeService
 from ..observability import get_logger, request_context, truncate
@@ -56,6 +56,8 @@ class CycleReport:
     escalated: int = 0
     needs_review: int = 0
     failed: int = 0
+    tokens_used: int = 0
+    budget_stopped: bool = False
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -76,6 +78,8 @@ class CycleReport:
             "escalated": self.escalated,
             "needs_review": self.needs_review,
             "failed": self.failed,
+            "tokens_used": self.tokens_used,
+            "budget_stopped": self.budget_stopped,
             "errors": self.errors,
         }
 
@@ -196,6 +200,22 @@ class SocialEngagementAgent:
     # -- processing ------------------------------------------------------
 
     def _process_pending(self, agent_settings: AgentSettings, report: CycleReport) -> None:
+        # Spend cap, checked before any comment is claimed. An unattended
+        # poller that starts burning tokens should stop, not keep going until
+        # someone notices the bill.
+        budget = self.repos.usage.budget_status(agent_settings)
+        if budget["exceeded"]:
+            report.budget_stopped = True
+            message = (
+                f"daily token budget reached "
+                f"({budget['tokens_last_24h']}/{budget['daily_token_budget']}); "
+                "no comments processed this cycle"
+            )
+            report.errors.append(message)
+            log.warning("token budget reached, skipping processing", extra=budget)
+            self.repos.audit.log("budget.exceeded", level="error", details=budget)
+            return
+
         claimed = self.repos.comments.claim_new(agent_settings.max_comments_per_run)
         for comment in claimed:
             try:
@@ -246,6 +266,23 @@ class SocialEngagementAgent:
         )
 
         ai_result = self.ai.decide(context, model=agent_settings.openai_model)
+
+        # Recorded whether or not the call was usable: a retry costs money too.
+        usage = ai_result.usage or {}
+        record = self.repos.usage.record(
+            UsageRecord(
+                comment_id=comment.id,
+                platform=comment.platform,
+                model=ai_result.model,
+                input_tokens=int(usage.get("input_tokens") or usage.get("prompt_tokens") or 0),
+                output_tokens=int(usage.get("output_tokens") or usage.get("completion_tokens") or 0),
+                total_tokens=int(usage.get("total_tokens") or 0),
+                attempts=ai_result.attempts,
+                response_id=ai_result.response_id,
+                succeeded=ai_result.valid,
+            )
+        )
+        report.tokens_used += record.total_tokens
 
         guarded = apply_guardrails(
             ai_result.decision,

@@ -268,6 +268,36 @@ makes 13 OpenAI calls, not 39.
 
 ---
 
+## 9a. Watching the spend
+
+Every OpenAI call is recorded in the `ai_usage` table — tokens in, tokens out,
+model, attempt count, and whether the output was usable. Failed and retried
+calls are counted too, because a retry costs money whether or not its output
+was any good.
+
+The Overview tab shows calls, tokens (total and rolling 24h), and estimated
+cost. **Cost is only shown once you enter your own prices**, per 1,000,000
+tokens, in Settings or via `OPENAI_INPUT_COST_PER_MILLION` /
+`OPENAI_OUTPUT_COST_PER_MILLION`. With no rate set the dashboard says so rather
+than showing a figure from a price list that may be out of date.
+
+### The daily cap
+
+`DAILY_TOKEN_BUDGET` (0 = off) is a hard stop. Once that many tokens have been
+used in a rolling 24 hours, `run_cycle` stops claiming comments, logs a
+`budget.exceeded` audit entry, and reports `budget_stopped` in the cycle
+result. Comments are not lost — they stay `new` and are picked up once the
+window rolls forward or the cap is raised.
+
+This exists for the unattended case: `python -m social_agent watch` running on a
+server should stop costing money on its own if something goes wrong, rather than
+running until somebody notices the bill.
+
+Rough sizing from the bundled sample run: **13 comments ≈ 5,980 tokens**, or
+about 460 tokens per comment. Multiply by your own rate to size a cap.
+
+---
+
 ## 10. Knowledge base
 
 The only company-specific facts the model may state are the ones in the

@@ -789,3 +789,100 @@ def test_dashboard_requires_a_password():
     assert auth.check(f"Basic {good}").ok is True
     assert auth.check(f"Basic {bad}").ok is False
     assert auth.check(None).ok is False
+
+
+# ------------------------------------------------- token accounting & budget
+
+
+def test_every_ai_call_is_recorded_including_failures(app):
+    _run(app)
+    totals = app.repos.usage.totals()
+    assert totals["calls"] == 13                    # one per comment
+    assert totals["total_tokens"] > 0
+    assert totals["input_tokens"] > 0 and totals["output_tokens"] > 0
+
+
+def test_a_failed_call_still_counts_against_spend():
+    """A retry costs money whether or not its output was usable."""
+    from social_agent.ai import AIDecisionService, OpenAIClient
+
+    settings = Settings()
+    settings.openai.api_key = "sk-test"
+    transport = QueuedOpenAITransport(queue=[
+        responses_payload({"garbage": 1}),
+        responses_payload({"garbage": 2}),
+    ])
+    app = build_test_application(transport=transport, adapters={"facebook": MockAdapter("facebook")})
+    _decide(app, "Beautiful!")
+
+    totals = app.repos.usage.totals()
+    assert totals["calls"] == 1
+    assert totals["failed_calls"] == 1              # marked unusable, still billed
+
+
+def test_cost_is_not_estimated_without_configured_rates(app):
+    from social_agent.dashboard.api import overview
+
+    _run(app)
+    usage = overview(app, {}, {})["usage"]
+    # No rates set: report null rather than a made-up figure.
+    assert usage["rates_configured"] is False
+    assert usage["estimated_cost_usd"] is None
+
+    app.repos.settings.update(input_cost_per_million=1.25, output_cost_per_million=10.0)
+    usage = overview(app, {}, {})["usage"]
+    assert usage["rates_configured"] is True
+    assert usage["estimated_cost_usd"] > 0
+
+
+def test_cost_maths():
+    from social_agent.database.models import AgentSettings
+
+    db = Database(":memory:")
+    db.migrate()
+    repos = Repositories(db)
+    settings = AgentSettings(input_cost_per_million=2.0, output_cost_per_million=10.0)
+    cost = repos.usage.estimated_cost(
+        {"input_tokens": 1_000_000, "output_tokens": 500_000}, settings
+    )
+    assert cost == 7.0                              # 1M*2 + 0.5M*10
+
+
+def test_budget_cap_stops_processing(app):
+    _run(app)
+    used = app.repos.usage.totals()["total_tokens"]
+    assert used > 0
+
+    app.repos.settings.update(daily_token_budget=used // 2)
+    calls_before = app.repos.usage.totals()["calls"]
+
+    # New comments arrive, but the cap must stop them being processed.
+    post = app.repos.posts.upsert(
+        Post(platform="facebook", platform_post_id="p_new", caption="x")
+    )
+    app.repos.comments.insert_if_new(
+        Comment(platform="facebook", platform_comment_id="c_over_budget",
+                platform_post_id="p_new", post_id=post.id, comment_text="Beautiful!")
+    )
+    report = app.agent.run_cycle()
+
+    assert report.budget_stopped is True
+    assert report.processed == 0
+    assert app.repos.usage.totals()["calls"] == calls_before   # no new spend
+    assert any("budget" in e for e in report.errors)
+
+
+def test_zero_budget_means_no_cap(app):
+    assert app.repos.settings.get().daily_token_budget == 0
+    report = _run(app)
+    assert report.budget_stopped is False
+    assert report.processed == 13
+
+
+def test_budget_is_reported_in_health(app):
+    _run(app)
+    app.repos.settings.update(daily_token_budget=1_000_000)
+    health = app.health()
+    assert health["usage"]["calls"] == 13
+    assert health["usage"]["budget"]["enabled"] is True
+    assert health["usage"]["budget"]["exceeded"] is False

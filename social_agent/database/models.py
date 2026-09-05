@@ -204,6 +204,13 @@ class AgentSettings:
     instagram_comments_actor: str = ""
     instagram_posts_actor: str = ""
     instagram_reply_actor: str = ""
+    #: 0 disables the cap. Counted against tokens used in the last 24 hours.
+    daily_token_budget: int = 0
+    #: Per 1,000,000 tokens. Configuration, not constants: published rates
+    #: change and differ per model, so a hardcoded number would go stale and be
+    #: presented to the operator as fact.
+    input_cost_per_million: float = 0.0
+    output_cost_per_million: float = 0.0
     id: int = 1
     created_at: str | None = None
     updated_at: str | None = None
@@ -229,6 +236,9 @@ class AgentSettings:
             "instagram_comments_actor",
             "instagram_posts_actor",
             "instagram_reply_actor",
+            "daily_token_budget",
+            "input_cost_per_million",
+            "output_cost_per_million",
         ),
         repr=False,
     )
@@ -244,6 +254,27 @@ class AgentSettings:
         ``kind`` is one of ``comments``, ``posts`` or ``reply``.
         """
         return str(getattr(self, f"{platform}_{kind}_actor", "") or "")
+
+
+@dataclass
+class UsageRecord:
+    """One OpenAI call's token consumption."""
+
+    model: str = ""
+    platform: str = ""
+    comment_id: int | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    attempts: int = 1
+    request_id: str = ""
+    response_id: str = ""
+    succeeded: bool = True
+    id: int | None = None
+    created_at: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass

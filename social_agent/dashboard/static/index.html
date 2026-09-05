@@ -189,6 +189,24 @@ function viewOverview(d) {
         </tbody></table>
       </div>
       <div class="card">
+        <h4>OpenAI usage</h4>
+        ${(() => {
+          const u = d.usage, b = u.budget;
+          const cost = u.rates_configured
+            ? `$${u.estimated_cost_usd.toFixed(4)} total · $${u.estimated_cost_usd_24h.toFixed(4)} in 24h`
+            : '<span class="muted">set token prices in Settings to see cost</span>';
+          const bar = b.enabled
+            ? `<div class="small" style="margin-top:6px">Budget: <strong>${b.tokens_last_24h.toLocaleString()}</strong> / ${b.daily_token_budget.toLocaleString()} tokens per 24h
+               ${b.exceeded ? '<span class="tag high">cap reached — processing paused</span>' : `<span class="tag low">${b.remaining.toLocaleString()} left</span>`}</div>`
+            : '<div class="small muted" style="margin-top:6px">No daily cap set. Add one in Settings to stop runaway spend.</div>';
+          return `<table><tbody>
+            <tr><td>API calls</td><td><strong>${u.calls.toLocaleString()}</strong>${u.failed_calls ? ` <span class="tag medium">${u.failed_calls} failed</span>` : ''}</td></tr>
+            <tr><td>Tokens</td><td><strong>${u.total_tokens.toLocaleString()}</strong> total · ${u.tokens_last_24h.toLocaleString()} in 24h</td></tr>
+            <tr><td>Est. cost</td><td>${cost}</td></tr>
+          </tbody></table>${bar}`;
+        })()}
+      </div>
+      <div class="card">
         <h4>Run a cycle</h4>
         <p class="small muted">Fetch new comments, run them through the agent, and apply the current routing rules.</p>
         <button class="act primary" id="runCycle">Run one cycle now</button>
@@ -288,6 +306,11 @@ function viewSettings(d) {
         ${sw('auto_reply_enabled', 'Enable automatic replies', 'Only applies when dry run and approval are both off.')}
         ${num('minimum_confidence', 'Auto-reply confidence threshold', '0.01')}
         ${num('max_reply_length', 'Maximum reply length (characters)', '1')}
+      </div>
+      <div class="card"><h4>Spend controls</h4>
+        ${num('daily_token_budget', 'Daily token budget', '1000', 'Processing pauses once this many tokens are used in 24 hours. 0 = no cap.')}
+        ${num('input_cost_per_million', 'Input price per 1M tokens (USD)', '0.01', 'From your OpenAI pricing page — left at 0, cost is not estimated.')}
+        ${num('output_cost_per_million', 'Output price per 1M tokens (USD)', '0.01')}
       </div>
       <div class="card"><h4>Fetching</h4>
         ${num('polling_interval_seconds', 'Polling interval (seconds)', '1')}

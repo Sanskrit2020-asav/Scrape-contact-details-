@@ -199,6 +199,18 @@ class AgentDefaults:
     )
     instagram_reply_actor: str = field(default_factory=lambda: _env("APIFY_INSTAGRAM_REPLY_ACTOR"))
 
+    # Spend controls. The budget is a hard stop on tokens consumed in a rolling
+    # 24 hours; 0 disables it. Prices are per 1,000,000 tokens and default to 0,
+    # in which case the dashboard reports cost as "not configured" rather than
+    # inventing a rate that may be out of date.
+    daily_token_budget: int = field(default_factory=lambda: _env_int("DAILY_TOKEN_BUDGET", 0))
+    input_cost_per_million: float = field(
+        default_factory=lambda: _env_float("OPENAI_INPUT_COST_PER_MILLION", 0.0)
+    )
+    output_cost_per_million: float = field(
+        default_factory=lambda: _env_float("OPENAI_OUTPUT_COST_PER_MILLION", 0.0)
+    )
+
 
 @dataclass
 class Settings:

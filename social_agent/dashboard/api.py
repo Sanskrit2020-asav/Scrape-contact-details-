@@ -30,7 +30,27 @@ def overview(app, params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any
     replies = app.repos.replies.counts()
     agent_settings = app.repos.settings.get()
 
+    totals_all = app.repos.usage.totals()
+    totals_24h = app.repos.usage.totals(since_hours=24)
+    rates_set = bool(agent_settings.input_cost_per_million or agent_settings.output_cost_per_million)
+
     return {
+        "usage": {
+            "calls": totals_all.get("calls", 0),
+            "failed_calls": totals_all.get("failed_calls", 0),
+            "total_tokens": totals_all.get("total_tokens", 0),
+            "tokens_last_24h": totals_24h.get("total_tokens", 0),
+            # Reported as null, not 0, when no rate is configured: the
+            # dashboard must not present a guessed price as a real figure.
+            "estimated_cost_usd": (
+                app.repos.usage.estimated_cost(totals_all, agent_settings) if rates_set else None
+            ),
+            "estimated_cost_usd_24h": (
+                app.repos.usage.estimated_cost(totals_24h, agent_settings) if rates_set else None
+            ),
+            "rates_configured": rates_set,
+            "budget": app.repos.usage.budget_status(agent_settings),
+        },
         "totals": {
             "comments": app.repos.comments.total(),
             "replies": replies.get("total", 0),

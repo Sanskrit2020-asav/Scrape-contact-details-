@@ -60,6 +60,10 @@ class Application:
                 "auto_reply_enabled": agent_settings.auto_reply_enabled,
                 "minimum_confidence": agent_settings.minimum_confidence,
             },
+            "usage": {
+                **self.repos.usage.totals(),
+                "budget": self.repos.usage.budget_status(agent_settings),
+            },
             "platforms": {name: adapter.health() for name, adapter in self.adapters.items()},
         }
 
