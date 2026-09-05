@@ -1,12 +1,25 @@
-This repository contains two independent tools:
+This repository contains three independent tools:
 
-1. **Intelligent Sales Assistant** for North Nepal Travel & Trek — an AI
+1. **Social Engagement Agent** for North Nepal Travel & Trek — monitors comments
+   on Facebook and Instagram, classifies each one with **OpenAI**, drafts a
+   short reply in the company's voice, and routes it to a human when a human is
+   needed. Social I/O runs through **Apify**. Ships in dry-run mode with human
+   approval required and auto-reply disabled. See
+   **[`docs/social_agent.md`](docs/social_agent.md)** and the `social_agent/`
+   package. Quick start:
+
+   ```
+   python -m social_agent demo        # offline walkthrough, no credentials
+   python -m social_agent serve       # admin dashboard on :8080
+   ```
+
+2. **Intelligent Sales Assistant** for North Nepal Travel & Trek — an AI
    consultant that estimates trek costs, retrieves company knowledge (RAG),
    researches the website/web, reasons like a 15-year Nepal trekking expert, and
    drafts quotations and emails. See **[`docs/sales_assistant.md`](docs/sales_assistant.md)**
    and the `sales_assistant/` package. Quick start:
    `python -m sales_assistant.cli estimate --trek "Everest Base Camp" --days 14 --pax 2`
-2. **Facebook contact scraper** (below) — the original lead-enrichment pipeline.
+3. **Facebook contact scraper** (below) — the original lead-enrichment pipeline.
 
 ---
 

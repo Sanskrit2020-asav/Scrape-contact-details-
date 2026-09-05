@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>North Nepal — Social Engagement Agent</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --panel: #ffffff; --ink: #1c2321; --muted: #6b7772;
+    --line: #e2e6e2; --accent: #2f6b4f; --accent-soft: #eaf3ee;
+    --warn: #b3651b; --warn-soft: #fdf1e5; --danger: #a53228; --danger-soft: #fbeceb;
+    --ok: #2f6b4f; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    background: var(--panel); border-bottom: 1px solid var(--line);
+    padding: 14px 22px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .modes { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fff; white-space: nowrap;
+  }
+  .pill.on { background: var(--accent-soft); border-color: #bcd8c8; color: var(--accent); font-weight: 600; }
+  .pill.warn { background: var(--warn-soft); border-color: #f0d5b8; color: var(--warn); font-weight: 600; }
+  nav { display: flex; gap: 4px; padding: 12px 22px 0; flex-wrap: wrap; }
+  nav button {
+    border: 1px solid transparent; background: none; padding: 8px 14px; cursor: pointer;
+    font-size: 14px; color: var(--muted); border-radius: var(--radius) var(--radius) 0 0;
+  }
+  nav button.active { background: var(--panel); border-color: var(--line); border-bottom-color: var(--panel); color: var(--ink); font-weight: 600; }
+  main { padding: 0 22px 60px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 0 var(--radius) var(--radius) var(--radius); padding: 20px; min-height: 340px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 22px; }
+  .stat { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .stat .n { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; }
+  .stat .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px;
+       text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px;
+         background: #eef1ee; color: var(--muted); white-space: nowrap; }
+  .tag.low { background: var(--accent-soft); color: var(--accent); }
+  .tag.medium { background: var(--warn-soft); color: var(--warn); }
+  .tag.high { background: var(--danger-soft); color: var(--danger); }
+  .tag.fb { background: #e8eefb; color: #2c4a86; }
+  .tag.ig { background: #fbe9f2; color: #9c2a6b; }
+  button.act {
+    border: 1px solid var(--line); background: #fff; border-radius: 7px;
+    padding: 6px 11px; font-size: 13px; cursor: pointer; margin-right: 6px;
+  }
+  button.act:hover { border-color: var(--accent); color: var(--accent); }
+  button.act.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.act.primary:hover { opacity: .9; color: #fff; }
+  button.act:disabled { opacity: .45; cursor: not-allowed; }
+  textarea, input[type=text], input[type=number], select {
+    width: 100%; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+    font: inherit; font-size: 14px; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 62px; resize: vertical; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .card { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card h4 { margin: 0 0 6px; font-size: 15px; }
+  .banner {
+    border-radius: var(--radius); padding: 11px 14px; margin-bottom: 16px; font-size: 13.5px;
+    background: var(--warn-soft); border: 1px solid #f0d5b8; color: #7a4712;
+  }
+  .banner.err { background: var(--danger-soft); border-color: #f2c9c5; color: var(--danger); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .switch { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+  .switch input { width: auto; }
+  .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
+  pre { background: #f4f6f4; padding: 10px; border-radius: 7px; overflow-x: auto; font-size: 12px; margin: 6px 0 0; }
+  .cols2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>North Nepal Travel &amp; Trek</h1>
+    <div class="sub">Social Engagement Agent</div>
+  </div>
+  <div class="modes" id="modes"></div>
+</header>
+
+<nav id="nav"></nav>
+<main><div class="panel" id="panel"><div class="empty">Loading…</div></div></main>
+
+<script>
+const TABS = [
+  ['overview',  'Overview'],
+  ['pending',   'Pending Approval'],
+  ['inbox',     'Inbox'],
+  ['history',   'Reply History'],
+  ['knowledge', 'Knowledge Base'],
+  ['settings',  'Settings'],
+  ['logs',      'Logs'],
+];
+let active = 'overview';
+let cache = {};
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const el = id => document.getElementById(id);
+
+async function api(path, method = 'GET', body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).error || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+function platformTag(p) {
+  const cls = p === 'facebook' ? 'fb' : 'ig';
+  return `<span class="tag ${cls}">${p === 'facebook' ? 'Facebook' : 'Instagram'}</span>`;
+}
+function riskTag(r) { return r ? `<span class="tag ${esc(r)}">${esc(r)}</span>` : '—'; }
+function conf(c) { return (c || c === 0) ? (Number(c) * 100).toFixed(0) + '%' : '—'; }
+
+function renderNav() {
+  el('nav').innerHTML = TABS.map(([id, label]) =>
+    `<button class="${id === active ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('');
+  el('nav').querySelectorAll('button').forEach(b =>
+    b.onclick = () => { active = b.dataset.tab; renderNav(); load(); });
+}
+
+function renderModes(mode, health) {
+  const bits = [];
+  bits.push(`<span class="pill ${mode.dry_run ? 'warn' : 'on'}">${mode.dry_run ? 'DRY RUN — nothing is published' : 'LIVE'}</span>`);
+  bits.push(`<span class="pill ${mode.human_approval_required ? 'on' : ''}">Approval ${mode.human_approval_required ? 'required' : 'off'}</span>`);
+  bits.push(`<span class="pill ${mode.auto_reply_enabled ? 'warn' : ''}">Auto-reply ${mode.auto_reply_enabled ? 'ON' : 'off'}</span>`);
+  if (health) {
+    bits.push(`<span class="pill ${health.ai.configured ? 'on' : 'warn'}">OpenAI ${health.ai.configured ? health.ai.model : 'not configured'}</span>`);
+    const src = health.apify.using_mock_data ? 'Mock data' : (health.apify.configured ? 'Apify' : 'Apify not configured');
+    bits.push(`<span class="pill ${health.apify.using_mock_data ? 'warn' : (health.apify.configured ? 'on' : 'warn')}">${src}</span>`);
+  }
+  el('modes').innerHTML = bits.join('');
+}
+
+// ---------------------------------------------------------------- views
+
+function viewOverview(d) {
+  const t = d.totals;
+  const stat = (k, n) => `<div class="stat"><div class="n">${n}</div><div class="k">${k}</div></div>`;
+  const issues = [];
+  for (const [name, h] of Object.entries(d.health.platforms || {})) {
+    (h.issues || []).forEach(i => issues.push(`${name}: ${i}`));
+  }
+  return `
+    ${d.mode.dry_run ? '<div class="banner"><strong>Dry run is on.</strong> Comments are fetched and replies are generated and stored, but nothing is published to Facebook or Instagram.</div>' : ''}
+    ${!d.health.ai.configured ? '<div class="banner err"><strong>OpenAI is not configured.</strong> Set OPENAI_API_KEY. Every comment will be escalated to a human until you do.</div>' : ''}
+    ${issues.length ? `<div class="banner">${issues.map(esc).join('<br>')}</div>` : ''}
+    <div class="grid">
+      ${stat('Total comments', t.comments)}
+      ${stat('Replies generated', t.replies)}
+      ${stat('Pending approval', t.pending_approval)}
+      ${stat('Escalated', t.escalated)}
+      ${stat('Ignored', t.ignored)}
+      ${stat('Auto replies', t.auto_replies)}
+      ${stat('Needs review', t.needs_review)}
+      ${stat('Failed', t.failed)}
+    </div>
+    <div class="cols2">
+      <div class="card">
+        <h4>By platform</h4>
+        <table><tbody>
+          <tr><td>${platformTag('facebook')}</td><td><strong>${d.by_platform.facebook}</strong> comments</td></tr>
+          <tr><td>${platformTag('instagram')}</td><td><strong>${d.by_platform.instagram}</strong> comments</td></tr>
+        </tbody></table>
+      </div>
+      <div class="card">
+        <h4>Run a cycle</h4>
+        <p class="small muted">Fetch new comments, run them through the agent, and apply the current routing rules.</p>
+        <button class="act primary" id="runCycle">Run one cycle now</button>
+        <div id="cycleOut" class="small muted" style="margin-top:10px"></div>
+      </div>
+    </div>`;
+}
+
+function commentRow(c, withActions) {
+  const r = c.reply;
+  const replyBlock = r
+    ? `<textarea id="t${c.id}">${esc(r.text)}</textarea>
+       <div class="small muted" style="margin-top:4px">${esc(r.model)} · confidence ${conf(r.confidence)}${r.error ? ' · <span style="color:var(--danger)">' + esc(r.error) + '</span>' : ''}</div>`
+    : `<span class="muted small">${esc(c.reason || 'No reply generated.')}</span>`;
+  const actions = withActions ? `
+    <div style="margin-top:9px">
+      <button class="act primary" data-act="approve" data-id="${c.id}" ${r ? '' : 'disabled'}>Approve &amp; Reply</button>
+      <button class="act" data-act="ignore" data-id="${c.id}">Ignore</button>
+      <button class="act" data-act="escalate" data-id="${c.id}">Escalate</button>
+    </div>` : '';
+  return `<tr>
+    <td>${platformTag(c.platform)}<div class="small muted" style="margin-top:4px">${esc(c.post.topic || c.post.content_type || '')}</div></td>
+    <td><strong>${esc(c.author_name || 'Unknown')}</strong><div>${esc(c.comment_text)}</div></td>
+    <td><span class="tag">${esc(c.intent || '—')}</span><div class="small muted" style="margin-top:4px">${conf(c.confidence)}</div></td>
+    <td>${riskTag(c.risk_level)}<div class="small muted" style="margin-top:4px">${esc(c.status)}</div></td>
+    <td style="min-width:260px">${replyBlock}${actions}</td>
+  </tr>`;
+}
+
+function viewComments(items, withActions, emptyText) {
+  if (!items.length) return `<div class="empty">${emptyText}</div>`;
+  return `<table>
+    <thead><tr><th>Platform</th><th>Comment</th><th>Intent</th><th>Risk / Status</th><th>AI response</th></tr></thead>
+    <tbody>${items.map(c => commentRow(c, withActions)).join('')}</tbody></table>`;
+}
+
+function viewHistory(items) {
+  if (!items.length) return '<div class="empty">No replies yet.</div>';
+  return `<table>
+    <thead><tr><th>Platform</th><th>Original comment</th><th>Generated</th><th>Final</th><th>Status</th><th>When</th></tr></thead>
+    <tbody>${items.map(h => `<tr>
+      <td>${platformTag(h.platform)}</td>
+      <td>${esc(h.comment_text)}<div class="small muted">${esc(h.author_name)}</div></td>
+      <td class="small">${esc(h.reply_text)}</td>
+      <td class="small">${esc(h.final_reply_text)}</td>
+      <td>${h.posted ? (h.dry_run ? '<span class="tag medium">dry run</span>' : '<span class="tag low">posted</span>') : '<span class="tag">not posted</span>'}
+          ${h.auto ? '<span class="tag">auto</span>' : ''}</td>
+      <td class="small muted">${esc(h.posted_at || h.created_at)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function viewKnowledge(items) {
+  const rows = items.map(k => `<tr>
+    <td><strong>${esc(k.title)}</strong><div class="small muted">${esc(k.content).slice(0, 200)}</div></td>
+    <td><span class="tag">${esc(k.category)}</span></td>
+    <td><span class="tag ${k.status === 'active' ? 'low' : ''}">${esc(k.status)}</span>
+        ${k.human_only ? '<span class="tag high">human only</span>' : ''}</td>
+    <td class="small muted">${esc(k.valid_from || '—')} → ${esc(k.valid_until || '—')}</td>
+    <td><button class="act" data-act="kdel" data-id="${k.id}">Delete</button>
+        <button class="act" data-act="ktoggle" data-id="${k.id}" data-status="${k.status}">${k.status === 'active' ? 'Archive' : 'Activate'}</button></td>
+  </tr>`).join('');
+  return `
+    <div class="card">
+      <h4>Add approved knowledge</h4>
+      <p class="small muted">Only active, in-date, non-human-only items are ever shown to the AI. Anything not here, the agent will not state.</p>
+      <div class="field"><label>Title</label><input type="text" id="kTitle" placeholder="Manaslu Circuit — 2026 pricing"></div>
+      <div class="field"><label>Content</label><textarea id="kContent" placeholder="What the agent may say about this."></textarea></div>
+      <div class="row">
+        <div style="flex:1"><label class="small muted">Category</label>
+          <select id="kCategory">${['itinerary','difficulty','pricing','permits','transportation','accommodation','helicopter','policy','faq','seasonal','safety','notice','general'].map(c => `<option>${c}</option>`).join('')}</select></div>
+        <div style="flex:1"><label class="small muted">Valid from</label><input type="text" id="kFrom" placeholder="YYYY-MM-DD"></div>
+        <div style="flex:1"><label class="small muted">Valid until</label><input type="text" id="kUntil" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="switch"><input type="checkbox" id="kHuman"><label for="kHuman">Internal only — never show this to the AI</label></div>
+      <button class="act primary" id="kAdd">Add item</button>
+    </div>
+    <table><thead><tr><th>Item</th><th>Category</th><th>Status</th><th>Valid</th><th></th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5" class="empty">No knowledge items yet.</td></tr>'}</tbody></table>`;
+}
+
+function viewSettings(d) {
+  const s = d.settings, e = d.environment;
+  const num = (k, label, step, hint) => `<div class="field"><label>${label}</label>
+    <input type="number" step="${step}" id="s_${k}" value="${s[k]}">${hint ? `<div class="small muted">${hint}</div>` : ''}</div>`;
+  const txt = (k, label, hint) => `<div class="field"><label>${label}</label>
+    <input type="text" id="s_${k}" value="${esc(s[k])}">${hint ? `<div class="small muted">${hint}</div>` : ''}</div>`;
+  const sw = (k, label, hint) => `<div class="switch"><input type="checkbox" id="s_${k}" ${s[k] ? 'checked' : ''}>
+    <label for="s_${k}">${label}</label></div>${hint ? `<div class="small muted" style="margin:-6px 0 10px 24px">${hint}</div>` : ''}`;
+  return `
+    <div class="banner">API keys are read from the environment and are never editable or visible here.
+      OpenAI key: <strong>${e.openai.api_key_configured ? 'configured' : 'MISSING'}</strong> ·
+      Apify token: <strong>${e.apify.api_token_configured ? 'configured' : 'MISSING'}</strong></div>
+    <div class="cols2">
+      <div class="card"><h4>Operating mode</h4>
+        ${sw('dry_run', 'Dry run', 'Generate and store everything, publish nothing.')}
+        ${sw('human_approval_required', 'Require human approval', 'Every reply waits for a person.')}
+        ${sw('auto_reply_enabled', 'Enable automatic replies', 'Only applies when dry run and approval are both off.')}
+        ${num('minimum_confidence', 'Auto-reply confidence threshold', '0.01')}
+        ${num('max_reply_length', 'Maximum reply length (characters)', '1')}
+      </div>
+      <div class="card"><h4>Fetching</h4>
+        ${num('polling_interval_seconds', 'Polling interval (seconds)', '1')}
+        ${num('max_comments_per_run', 'Max comments per run', '1')}
+        ${num('max_posts_per_run', 'Max posts per run', '1')}
+        ${txt('openai_model', 'OpenAI model', 'e.g. gpt-5. Must be a model your account can use.')}
+        ${sw('facebook_enabled', 'Facebook enabled')}
+        ${sw('instagram_enabled', 'Instagram enabled')}
+      </div>
+      <div class="card"><h4>Apify actors — Facebook</h4>
+        ${txt('facebook_posts_actor', 'Posts actor')}
+        ${txt('facebook_comments_actor', 'Comments actor')}
+        ${txt('facebook_reply_actor', 'Reply actor', 'Leave empty to keep the agent read-only on Facebook.')}
+      </div>
+      <div class="card"><h4>Apify actors — Instagram</h4>
+        ${txt('instagram_posts_actor', 'Posts actor')}
+        ${txt('instagram_comments_actor', 'Comments actor')}
+        ${txt('instagram_reply_actor', 'Reply actor', 'Leave empty to keep the agent read-only on Instagram.')}
+      </div>
+    </div>
+    <button class="act primary" id="sSave">Save settings</button>
+    <span id="sMsg" class="small muted" style="margin-left:10px"></span>`;
+}
+
+function viewLogs(items) {
+  if (!items.length) return '<div class="empty">No log entries yet.</div>';
+  return `<table><thead><tr><th>When</th><th>Event</th><th>Platform</th><th>Details</th></tr></thead>
+    <tbody>${items.map(l => `<tr>
+      <td class="small muted" style="white-space:nowrap">${esc(l.created_at)}</td>
+      <td><span class="tag ${l.level === 'error' ? 'high' : ''}">${esc(l.event_type)}</span>
+          <div class="small muted">${esc(l.request_id)}</div></td>
+      <td class="small">${l.platform ? platformTag(l.platform) : '—'}</td>
+      <td><pre>${esc(JSON.stringify(l.details))}</pre></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ---------------------------------------------------------------- wiring
+
+async function load() {
+  const panel = el('panel');
+  panel.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    if (active === 'overview') {
+      const d = await api('/api/overview'); cache.overview = d;
+      renderModes(d.mode, d.health);
+      panel.innerHTML = viewOverview(d);
+      el('runCycle').onclick = async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = 'Running…';
+        try {
+          const r = await api('/api/run-cycle', 'POST', {});
+          el('cycleOut').textContent =
+            `Fetched ${r.comments_fetched} (${r.comments_new} new, ${r.comments_duplicate} already seen) · ` +
+            `pending ${r.pending_approval} · escalated ${r.escalated} · ignored ${r.ignored} · ` +
+            `needs review ${r.needs_review}` + (r.errors.length ? ` · errors: ${r.errors.join('; ')}` : '');
+        } catch (e) { el('cycleOut').textContent = 'Failed: ' + e.message; }
+        ev.target.disabled = false; ev.target.textContent = 'Run one cycle now';
+        const d2 = await api('/api/overview'); renderModes(d2.mode, d2.health);
+      };
+    } else if (active === 'pending') {
+      const d = await api('/api/pending');
+      panel.innerHTML = viewComments(d.items, true, 'Nothing waiting for approval.');
+      bindActions();
+    } else if (active === 'inbox') {
+      const d = await api('/api/inbox?limit=100');
+      panel.innerHTML = viewComments(d.items, false, 'No comments yet. Run a cycle from the Overview tab.');
+    } else if (active === 'history') {
+      panel.innerHTML = viewHistory((await api('/api/history?limit=100')).items);
+    } else if (active === 'knowledge') {
+      panel.innerHTML = viewKnowledge((await api('/api/knowledge')).items);
+      bindKnowledge();
+    } else if (active === 'settings') {
+      panel.innerHTML = viewSettings(await api('/api/settings'));
+      bindSettings();
+    } else if (active === 'logs') {
+      panel.innerHTML = viewLogs((await api('/api/logs?limit=150')).items);
+    }
+  } catch (e) {
+    panel.innerHTML = `<div class="banner err">Could not load: ${esc(e.message)}</div>`;
+  }
+}
+
+function bindActions() {
+  el('panel').querySelectorAll('button[data-act]').forEach(b => b.onclick = async () => {
+    const id = Number(b.dataset.id), act = b.dataset.act;
+    b.disabled = true;
+    try {
+      if (act === 'approve') {
+        const ta = el('t' + id);
+        const r = await api('/api/approve', 'POST', { comment_id: id, text: ta ? ta.value : undefined });
+        if (!r.ok) alert('Not published: ' + (r.error || r.reason));
+        else if (r.dry_run) alert('Dry run: recorded, not published to the platform.');
+      } else if (act === 'ignore') {
+        await api('/api/ignore', 'POST', { comment_id: id });
+      } else if (act === 'escalate') {
+        await api('/api/escalate', 'POST', { comment_id: id });
+      }
+      load();
+    } catch (e) { alert('Failed: ' + e.message); b.disabled = false; }
+  });
+}
+
+function bindKnowledge() {
+  el('kAdd').onclick = async () => {
+    try {
+      const r = await api('/api/knowledge', 'POST', {
+        title: el('kTitle').value, content: el('kContent').value,
+        category: el('kCategory').value, valid_from: el('kFrom').value,
+        valid_until: el('kUntil').value, human_only: el('kHuman').checked,
+      });
+      if (!r.ok) alert(r.error); else load();
+    } catch (e) { alert('Failed: ' + e.message); }
+  };
+  el('panel').querySelectorAll('button[data-act]').forEach(b => b.onclick = async () => {
+    const id = Number(b.dataset.id);
+    try {
+      if (b.dataset.act === 'kdel') {
+        if (confirm('Delete this knowledge item?')) await api('/api/knowledge/delete', 'POST', { id });
+      } else {
+        await api('/api/knowledge/update', 'POST',
+          { id, status: b.dataset.status === 'active' ? 'archived' : 'active' });
+      }
+      load();
+    } catch (e) { alert('Failed: ' + e.message); }
+  });
+}
+
+function bindSettings() {
+  el('sSave').onclick = async () => {
+    const body = {};
+    el('panel').querySelectorAll('[id^=s_]').forEach(i => {
+      const key = i.id.slice(2);
+      body[key] = i.type === 'checkbox' ? i.checked
+        : (i.type === 'number' ? Number(i.value) : i.value);
+    });
+    try {
+      const r = await api('/api/settings', 'POST', body);
+      el('sMsg').textContent = r.ok ? 'Saved.' : 'Failed.';
+      const d = await api('/api/overview'); renderModes(d.mode, d.health);
+    } catch (e) { el('sMsg').textContent = 'Failed: ' + e.message; }
+  };
+}
+
+renderNav();
+load();
+</script>
+</body>
+</html>

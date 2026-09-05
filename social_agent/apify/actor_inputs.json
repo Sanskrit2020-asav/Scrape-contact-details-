@@ -1,0 +1,32 @@
+{
+  "_comment": [
+    "Per-actor input templates. Placeholders in {braces} are filled at runtime:",
+    "  {page_urls}  list of watched page/profile URLs",
+    "  {post_urls}  list of post URLs whose comments to fetch",
+    "  {limit}      max results for this run",
+    "  {comment_url}, {reply_text}  for reply actors",
+    "Replace any block below to match the exact input schema of the actor you",
+    "configured in APIFY_*_ACTOR. Check the actor's own docs on apify.com — the",
+    "defaults here follow the field names the default actors document, but actor",
+    "input schemas do change and are the actor author's to define."
+  ],
+  "facebook_posts": {
+    "startUrls": ["{page_urls}"],
+    "resultsLimit": "{limit}"
+  },
+  "facebook_comments": {
+    "startUrls": ["{post_urls}"],
+    "resultsLimit": "{limit}",
+    "includeNestedComments": false,
+    "viewOption": "RANKED_UNFILTERED"
+  },
+  "instagram_posts": {
+    "directUrls": ["{page_urls}"],
+    "resultsType": "posts",
+    "resultsLimit": "{limit}"
+  },
+  "instagram_comments": {
+    "directUrls": ["{post_urls}"],
+    "resultsLimit": "{limit}"
+  }
+}

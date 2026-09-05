@@ -1,0 +1,76 @@
+{
+  "posts": [
+    {
+      "id": "ig_post_3001",
+      "url": "https://www.instagram.com/p/ig_post_3001/",
+      "caption": "Annapurna Base Camp at first light. 4,130m and worth every step.",
+      "type": "Clips",
+      "topic": "Annapurna Base Camp",
+      "timestamp": "2026-08-27T01:05:00+00:00"
+    },
+    {
+      "id": "ig_post_3002",
+      "url": "https://www.instagram.com/p/ig_post_3002/",
+      "caption": "Langtang valley in autumn. Quiet trails, big skies.",
+      "type": "Image",
+      "topic": "Langtang Valley",
+      "timestamp": "2026-08-29T03:30:00+00:00"
+    }
+  ],
+  "comments": [
+    {
+      "id": "ig_c_4001",
+      "postId": "ig_post_3001",
+      "text": "Wow 😍",
+      "ownerUsername": "wanderlust_ellie",
+      "ownerId": "ig_u_601",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3001/c/4001/",
+      "timestamp": "2026-08-27T05:12:00+00:00"
+    },
+    {
+      "id": "ig_c_4002",
+      "postId": "ig_post_3001",
+      "text": "Which mountain is this?",
+      "ownerUsername": "marco.trails",
+      "ownerId": "ig_u_602",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3001/c/4002/",
+      "timestamp": "2026-08-27T09:41:00+00:00"
+    },
+    {
+      "id": "ig_c_4003",
+      "postId": "ig_post_3002",
+      "text": "I want to come to Nepal next year.",
+      "ownerUsername": "sofia.andersen",
+      "ownerId": "ig_u_603",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3002/c/4003/",
+      "timestamp": "2026-08-29T12:00:00+00:00"
+    },
+    {
+      "id": "ig_c_4004",
+      "postId": "ig_post_3002",
+      "text": "Is the trail open right now?",
+      "ownerUsername": "trekker_dan",
+      "ownerId": "ig_u_604",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3002/c/4004/",
+      "timestamp": "2026-09-02T06:20:00+00:00"
+    },
+    {
+      "id": "ig_c_4005",
+      "postId": "ig_post_3001",
+      "text": "❤️❤️",
+      "ownerUsername": "himalaya_dreams",
+      "ownerId": "ig_u_605",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3001/c/4005/",
+      "timestamp": "2026-08-28T14:55:00+00:00"
+    },
+    {
+      "id": "ig_c_4006",
+      "postId": "ig_post_3002",
+      "text": "@jenna look at this one 👀",
+      "ownerUsername": "callum.w",
+      "ownerId": "ig_u_606",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3002/c/4006/",
+      "timestamp": "2026-08-30T20:11:00+00:00"
+    }
+  ]
+}

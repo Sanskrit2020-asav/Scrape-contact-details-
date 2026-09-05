@@ -15,3 +15,9 @@ openpyxl>=3.1.0       # .xlsx pricing + knowledge
 
 # --- Tests ---
 pytest>=8.0.0
+
+# --- Social Engagement Agent (social_agent/) ---
+# No runtime dependencies: it uses the Python standard library only, and talks
+# to the OpenAI and Apify REST APIs over urllib. `pytest` above runs its tests.
+# For production the dashboard is a WSGI app; serve it with any WSGI server:
+# gunicorn>=21.0.0

@@ -3,3 +3,10 @@ __pycache__/
 .env
 output/*.csv
 !output/.gitkeep
+
+# Social agent runtime data (database, WAL files). Contains fetched comments
+# and the audit trail — operational data, never source.
+social_agent/data/*.db
+social_agent/data/*.db-wal
+social_agent/data/*.db-shm
+.pytest_cache/

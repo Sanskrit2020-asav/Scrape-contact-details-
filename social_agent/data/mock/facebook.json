@@ -1,0 +1,85 @@
+{
+  "posts": [
+    {
+      "id": "fb_post_1001",
+      "url": "https://www.facebook.com/northnepaltrek/posts/1001",
+      "caption": "Sunrise over the Manaslu range from Lho village. Our October group got a perfect morning up there.",
+      "type": "photo",
+      "topic": "Manaslu Circuit",
+      "timestamp": "2026-08-28T02:15:00+00:00"
+    },
+    {
+      "id": "fb_post_1002",
+      "url": "https://www.facebook.com/northnepaltrek/posts/1002",
+      "caption": "Everest Base Camp, 5,364m. Fourteen days of walking to stand right here.",
+      "type": "photo",
+      "topic": "Everest Base Camp",
+      "timestamp": "2026-08-30T04:40:00+00:00"
+    }
+  ],
+  "comments": [
+    {
+      "id": "fb_c_2001",
+      "postId": "fb_post_1001",
+      "text": "Beautiful!",
+      "ownerUsername": "Marina L.",
+      "ownerId": "fb_u_501",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1001?comment_id=2001",
+      "timestamp": "2026-08-28T06:10:00+00:00"
+    },
+    {
+      "id": "fb_c_2002",
+      "postId": "fb_post_1002",
+      "text": "I visited Nepal in 2019. Amazing country!",
+      "ownerUsername": "Tom Bradley",
+      "ownerId": "fb_u_502",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1002?comment_id=2002",
+      "timestamp": "2026-08-30T09:22:00+00:00"
+    },
+    {
+      "id": "fb_c_2003",
+      "postId": "fb_post_1001",
+      "text": "How much is the Manaslu trek?",
+      "ownerUsername": "Priya S.",
+      "ownerId": "fb_u_503",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1001?comment_id=2003",
+      "timestamp": "2026-08-29T11:05:00+00:00"
+    },
+    {
+      "id": "fb_c_2004",
+      "postId": "fb_post_1002",
+      "text": "Is this difficult?",
+      "ownerUsername": "Greg Halloran",
+      "ownerId": "fb_u_504",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1002?comment_id=2004",
+      "timestamp": "2026-08-31T07:48:00+00:00"
+    },
+    {
+      "id": "fb_c_2005",
+      "postId": "fb_post_1002",
+      "text": "You scammed me.",
+      "ownerUsername": "Unhappy Customer",
+      "ownerId": "fb_u_505",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1002?comment_id=2005",
+      "timestamp": "2026-08-31T15:30:00+00:00"
+    },
+    {
+      "id": "fb_c_2006",
+      "postId": "fb_post_1001",
+      "text": "CHEAP FOLLOWERS AND LIKES!! DM me now www.buy-followers-fast.example",
+      "ownerUsername": "growth_deals_247",
+      "ownerId": "fb_u_506",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1001?comment_id=2006",
+      "timestamp": "2026-08-29T18:02:00+00:00"
+    },
+    {
+      "id": "fb_c_2007",
+      "postId": "fb_post_1001",
+      "text": "Do I need a special permit for Manaslu?",
+      "ownerUsername": "Hannah K.",
+      "ownerId": "fb_u_507",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1001?comment_id=2007",
+      "timestamp": "2026-09-01T08:15:00+00:00"
+    }
+  ]
+}
