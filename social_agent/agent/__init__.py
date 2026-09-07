@@ -1,4 +1,5 @@
 """Agent orchestration, guardrails and publishing."""
+from .engagement import EngagementIndex, PostEngagement
 from .guardrails import GuardrailResult, apply_guardrails, mentions_current_incident
 from .pipeline import CycleReport, SocialEngagementAgent
 from .policy import RoutingDecision, auto_reply_blockers, route
@@ -7,6 +8,8 @@ from .variation import is_repetitive, similarity, variation_report
 
 __all__ = [
     "CycleReport",
+    "EngagementIndex",
+    "PostEngagement",
     "GuardrailResult",
     "PublishOutcome",
     "ReplyPublisher",

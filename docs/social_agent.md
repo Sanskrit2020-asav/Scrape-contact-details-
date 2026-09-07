@@ -298,6 +298,76 @@ about 460 tokens per comment. Multiply by your own rate to size a cap.
 
 ---
 
+## 9b. Mountaineering history and story posts
+
+Most of what the page posts is climbing history — first ascents, the people who
+made them, the peaks. So most comments are not sales enquiries; they are people
+who find the mountains interesting, and the agent answers them that way.
+
+Four intents cover this: `mountain_history`, `peak_identification`,
+`climbing_question`, `expedition_question`.
+
+### History is treated exactly like pricing
+
+A wrong first-ascent date under the company's name is what a climber
+screenshots. So **every year, altitude and first-ascent claim in a reply must
+appear in approved knowledge**, enforced by a guardrail, not just requested in
+the prompt. A reply saying "they summited in 1961" when no such date is approved
+is blocked and escalated.
+
+One exception: a year or altitude **the commenter themselves used** may be
+echoed back. "2019 was a good year up there" in reply to "I visited in 2019" is
+conversation, not a historical claim.
+
+### Statistics that move are never stated
+
+Summit counts, death tolls, fatality and success rates, permit fees, this
+season's numbers — all escalate, whatever the model believes. These change, and
+a figure that was right two years ago is simply wrong now. Seeded knowledge
+deliberately contains none of them.
+
+### What is seeded
+
+`social_agent/knowledge/mountain_history.py` holds the well-established record:
+the 1953 Everest ascent, Annapurna 1950 as the first 8,000er, Manaslu 1956,
+Kanchenjunga 1955 and its summit tradition, Lhotse/Makalu/Cho Oyu/Dhaulagiri,
+the eight 8,000ers in Nepal (and that K2 is not among them), Machhapuchhre,
+Ama Dablam, Messner and Habeler in 1978, Junko Tabei in 1975.
+
+Also seeded: name individual Nepali climbers rather than "the Sherpas" — Sherpa
+is an ethnic group, not a job title — and say plainly when history is unsettled,
+as with Mallory and Irvine.
+
+**Verify these against the Himalayan Database before relying on them
+commercially.** They are seeds for a knowledge base the company owns, and every
+one is editable in the dashboard.
+
+### Off our subject means ignore
+
+Politics, crypto, other people's businesses, unrelated arguments — classified
+`irrelevant` and left alone, even when polite.
+
+The distinction that matters: a comment does not need to mention a mountain to
+be on topic. "Beautiful!", "😍" and "I want to go" are genuine engagement and
+get replies. Off topic means it is actively about something else, not that it is
+short. The filter is a narrow blacklist for that reason — a keyword whitelist
+would silence exactly the comments most worth answering.
+
+### Comment density
+
+When a history post takes off, its comments carry the real conversation. Posts
+with at least `HIGH_ENGAGEMENT_THRESHOLD` comments (default 10) are treated as
+high-engagement: their comments are **processed first**, and the model is shown
+a wider slice of approved knowledge (14 items instead of 8).
+
+**"Research" here means the approved knowledge base, not the web.** The agent
+has no internet access by design. Letting it search and paraphrase is precisely
+how a wrong date gets published under the company's name. Widening the knowledge
+window is the safe version of the same idea — more of what a human already
+approved.
+
+---
+
 ## 10. Knowledge base
 
 The only company-specific facts the model may state are the ones in the

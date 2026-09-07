@@ -90,6 +90,21 @@ CONDITION_PATTERNS: tuple[re.Pattern[str], ...] = (
     ),
 )
 
+#: Subjects that are plainly not ours. Kept deliberately narrow: the test for
+#: "off topic" is that a comment is actively about something else, NOT that it
+#: fails to mention a mountain. "Beautiful!" and "😍" are genuine engagement
+#: with the post and must still get a reply, so no keyword whitelist is used —
+#: only this blacklist of things we stay out of.
+OFF_TOPIC_TERMS: tuple[str, ...] = (
+    "vote for", "election", "elected", "political party", "prime minister",
+    "parliament", "candidate", "campaign rally",
+    "bitcoin", "crypto", "forex", "trading signal", "investment opportunity",
+    "binary option", "casino", "betting", "lottery", "loan offer",
+    "sell you", "buy my", "my shop", "my page", "check my profile",
+    "follow back", "follow me", "sub4sub", "dm for promo",
+    "make money", "work from home", "earn daily",
+)
+
 COMPLAINT_TERMS: tuple[str, ...] = (
     "scam", "scammed", "fraud", "cheated", "ripped off", "rip off", "refund",
     "money back", "compensation", "lawyer", "legal action", "sue", "court",
@@ -120,6 +135,28 @@ _DATE_RE = re.compile(
     r"(?:\s+\d{1,2}(?:st|nd|rd|th)?)?(?:,?\s*\d{4})?\b",
     re.IGNORECASE,
 )
+#: A bare year, the commonest way a wrong historical claim gets stated.
+_YEAR_RE = re.compile(r"\b(1[89]\d{2}|20[0-2]\d)\b")
+
+#: An altitude presented as fact.
+_ALTITUDE_RE = re.compile(r"\b\d{1,2}[,.]?\d{3}\s?(?:m|metres|meters|ft|feet)\b", re.IGNORECASE)
+
+#: Statistics that move. A summit count or death toll that was right two years
+#: ago is wrong now, so these are escalated no matter what the model believes.
+MOVING_STATISTIC_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"\b(?:how many|number of|total)\b[^.?!]{0,50}?"
+        r"\b(?:people|climbers|summit\w*|died|deaths?|fatalit\w+|attempts?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:summit\w*|climbed|died|deaths?|fatalit\w+)\b[^.?!]{0,30}?"
+        r"\b(?:how many|this year|per year|each year|so far|to date|in total)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:death rate|fatality rate|success rate|permit fee|royalty)\b", re.IGNORECASE),
+)
+
 _SENTENCE_RE = re.compile(r"(?<=[.!?…])\s+")
 _EMOJI_RE = re.compile(
     "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F1E6-\U0001F1FF❤️]+"
@@ -272,6 +309,43 @@ def apply_guardrails(
             )
         return result
 
+    # 2a. Off our subject. Ours is the mountains, climbing and its history,
+    # trekking, and travel in Nepal, Bhutan and Tibet. Politics, crypto and
+    # other people's businesses are not, however politely they are raised.
+    off_topic = _contains(comment_text, OFF_TOPIC_TERMS)
+    if off_topic:
+        result.add_violation(f"off our subject: {off_topic!r}")
+        if decision.action != Action.IGNORE.value:
+            result.decision = AgentDecision(
+                action=Action.IGNORE.value,
+                intent="irrelevant" if decision.intent != "spam" else "spam",
+                confidence=decision.confidence,
+                reply=None,
+                needs_human=False,
+                reason=f"Not about our subject ({off_topic}); staying out of it",
+                risk_level=RiskLevel.LOW.value,
+                raw=decision.raw,
+            )
+            result.modified = True
+            log.info("guardrail ignored an off-topic comment", extra={"trigger": off_topic})
+        return result
+
+    # 2b. Questions asking for a statistic that changes — summit counts, death
+    # tolls, permit fees. There is a real answer, but it moves, and a stale
+    # number is worse than no answer.
+    for pattern in MOVING_STATISTIC_PATTERNS:
+        match = pattern.search(comment_text or "")
+        if match:
+            result.add_violation(f"asks for a moving statistic: {match.group(0).strip()[:50]!r}")
+            if decision.action != Action.ESCALATE.value:
+                result.decision = _escalate(
+                    decision, "Asks for a statistic that changes over time",
+                    risk=RiskLevel.MEDIUM.value,
+                )
+                result.modified = True
+                log.info("guardrail escalated a moving-statistic question")
+            return result
+
     # Nothing below concerns a decision with no reply text.
     if decision.action != Action.REPLY.value or not decision.reply:
         return result
@@ -302,6 +376,43 @@ def apply_guardrails(
         result.modified = True
         result.blocked = True
         return result
+
+    # 3b. Historical claims. A wrong first-ascent year under the company's name
+    # is the error a climber screenshots, so a year or altitude in the reply must
+    # be traceable to approved knowledge.
+    # A year the commenter themselves used is fair to echo back — "2019 was a
+    # good year up there" is conversation, not a historical claim. Only years
+    # the agent introduces on its own need to be traceable to knowledge.
+    year = next(
+        (m for m in _YEAR_RE.finditer(reply)
+         if m.group(0) not in approved_knowledge_text and m.group(0) not in (comment_text or "")),
+        None,
+    )
+    if year:
+        result.add_violation(f"unapproved year in reply: {year.group(0)!r}")
+        result.decision = _escalate(
+            decision, f"Reply stated the year {year.group(0)} which is not in approved knowledge",
+            risk=RiskLevel.MEDIUM.value,
+        )
+        result.modified = True
+        result.blocked = True
+        log.warning("guardrail blocked an unapproved date", extra={"matched": year.group(0)})
+        return result
+
+    altitude = _ALTITUDE_RE.search(reply)
+    if altitude and altitude.group(0).lower() not in knowledge \
+            and altitude.group(0).lower() not in (comment_text or "").lower():
+        # Compare digits only: "8,848.86m" in knowledge should cover "8848m".
+        digits = re.sub(r"\D", "", altitude.group(0))
+        if digits and digits[:4] not in re.sub(r"[^\d]", "", knowledge):
+            result.add_violation(f"unapproved altitude in reply: {altitude.group(0)!r}")
+            result.decision = _escalate(
+                decision, f"Reply stated an altitude ({altitude.group(0)}) not in approved knowledge",
+                risk=RiskLevel.MEDIUM.value,
+            )
+            result.modified = True
+            result.blocked = True
+            return result
 
     # 4. Voice.
     banned = _contains(reply, BANNED_PHRASES)

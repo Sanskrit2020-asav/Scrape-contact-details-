@@ -71,6 +71,24 @@
       "ownerId": "ig_u_606",
       "commentUrl": "https://www.instagram.com/p/ig_post_3002/c/4006/",
       "timestamp": "2026-08-30T20:11:00+00:00"
+    },
+    {
+      "id": "ig_c_4007",
+      "postId": "ig_post_3001",
+      "text": "Is that K2?",
+      "ownerUsername": "peak_spotter",
+      "ownerId": "ig_u_607",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3001/c/4007/",
+      "timestamp": "2026-08-28T09:00:00+00:00"
+    },
+    {
+      "id": "ig_c_4008",
+      "postId": "ig_post_3001",
+      "text": "Did Mallory reach the summit in 1924?",
+      "ownerUsername": "history_buff_j",
+      "ownerId": "ig_u_608",
+      "commentUrl": "https://www.instagram.com/p/ig_post_3001/c/4008/",
+      "timestamp": "2026-08-28T11:15:00+00:00"
     }
   ]
 }

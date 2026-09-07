@@ -47,6 +47,21 @@ from social_agent.social.base import (  # noqa: E402
     ReplyResult,
     SocialPlatformAdapter,
 )
+def _fixture_comment_count(platform: str) -> int:
+    """Read the expected count from the fixture, so adding sample comments
+    does not silently break every count assertion."""
+    import json
+    from social_agent.config import MOCK_DIR
+
+    data = json.loads((MOCK_DIR / f"{platform}.json").read_text(encoding="utf-8"))
+    return len(data["comments"])
+
+
+FB_COMMENTS = _fixture_comment_count("facebook")
+IG_COMMENTS = _fixture_comment_count("instagram")
+ALL_COMMENTS = FB_COMMENTS + IG_COMMENTS
+
+
 from social_agent.testing import (  # noqa: E402
     QueuedApifyTransport,
     QueuedOpenAITransport,
@@ -265,17 +280,17 @@ def test_disaster_comment_through_the_pipeline_is_escalated(app):
 
 def test_the_same_comment_is_never_processed_twice(app):
     first = _run(app)
-    assert first.comments_new == 13
+    assert first.comments_new == ALL_COMMENTS
     assert first.comments_duplicate == 0
     calls_after_first = len(app.ai.client.transport.requests)
 
     second = _run(app)
     assert second.comments_new == 0
-    assert second.comments_duplicate == 13
+    assert second.comments_duplicate == ALL_COMMENTS
     assert second.processed == 0
     # No second round of OpenAI calls for comments already seen.
     assert len(app.ai.client.transport.requests) == calls_after_first
-    assert app.repos.comments.total() == 13
+    assert app.repos.comments.total() == ALL_COMMENTS
 
 
 def test_a_posted_reply_cannot_be_duplicated(app):
@@ -466,8 +481,8 @@ def test_a_failing_platform_does_not_stop_the_cycle():
     })
     report = _run(app)
     assert any("facebook" in e for e in report.errors)
-    assert report.comments_new == 6                     # Instagram fixtures
-    assert report.processed == 6
+    assert report.comments_new == IG_COMMENTS           # Instagram fixtures only
+    assert report.processed == IG_COMMENTS
 
 
 # ------------------------------------------------------------ 16. OpenAI timeout
@@ -797,7 +812,7 @@ def test_dashboard_requires_a_password():
 def test_every_ai_call_is_recorded_including_failures(app):
     _run(app)
     totals = app.repos.usage.totals()
-    assert totals["calls"] == 13                    # one per comment
+    assert totals["calls"] == ALL_COMMENTS          # one per comment
     assert totals["total_tokens"] > 0
     assert totals["input_tokens"] > 0 and totals["output_tokens"] > 0
 
@@ -876,13 +891,172 @@ def test_zero_budget_means_no_cap(app):
     assert app.repos.settings.get().daily_token_budget == 0
     report = _run(app)
     assert report.budget_stopped is False
-    assert report.processed == 13
+    assert report.processed == ALL_COMMENTS
 
 
 def test_budget_is_reported_in_health(app):
     _run(app)
     app.repos.settings.update(daily_token_budget=1_000_000)
     health = app.health()
-    assert health["usage"]["calls"] == 13
+    assert health["usage"]["calls"] == ALL_COMMENTS
     assert health["usage"]["budget"]["enabled"] is True
     assert health["usage"]["budget"]["exceeded"] is False
+
+
+# ------------------------------------------- mountaineering history & stories
+
+
+def test_history_answer_uses_approved_dates(app):
+    result = _decide(app, "Who was the first person to climb Everest?")
+    assert result["intent"] == "mountain_history"
+    assert result["action"] == "reply"
+    assert "Tenzing" in result["reply"]
+
+
+@pytest.mark.parametrize("reply,comment,expected", [
+    ("Hillary and Tenzing, 29 May 1953.", "Who climbed it first?", "reply"),
+    ("They summited in 1961.", "Who climbed it first?", "escalate"),
+    ("2019 was a good year up there.", "I visited in 2019.", "reply"),
+    ("Everest is 8,848.86m.", "How high?", "reply"),
+    ("It is 7,200m high.", "How high?", "escalate"),
+])
+def test_dates_and_altitudes_must_be_traceable(reply, comment, expected):
+    """A year the agent invents is blocked; one it was given is not."""
+    knowledge = (
+        "Everest was first summited on 29 May 1953 by Edmund Hillary and Tenzing "
+        "Norgay. Everest stands at 8,848.86m."
+    )
+    decided = AgentDecision(
+        action="reply", intent="mountain_history", confidence=0.95, reply=reply,
+        needs_human=False, reason="", risk_level="low",
+    )
+    result = apply_guardrails(decided, comment_text=comment, approved_knowledge_text=knowledge)
+    assert result.decision.action == expected
+
+
+@pytest.mark.parametrize("comment", [
+    "How many people have summited Everest?",
+    "What is the death rate on Annapurna?",
+    "How many climbers died there in total?",
+    "What is the permit fee this year?",
+])
+def test_statistics_that_move_are_escalated(comment):
+    """A summit count right two years ago is wrong now."""
+    confident = AgentDecision(
+        action="reply", intent="mountain_history", confidence=0.99,
+        reply="About 6,000 people.", needs_human=False, reason="", risk_level="low",
+    )
+    result = apply_guardrails(confident, comment_text=comment)
+    assert result.decision.action == "escalate"
+    assert result.decision.reply is None
+
+
+def test_moving_statistic_question_escalates_in_the_pipeline(app):
+    result = _decide(app, "How many people have summited Everest in total?")
+    assert result["action"] == "escalate"
+    assert result["reply"] is None
+
+
+def test_peak_identification_corrects_the_k2_mixup(app):
+    result = _decide(app, "Is that K2?", platform="instagram")
+    assert result["action"] == "reply"
+    assert "Pakistan" in result["reply"] or "Machhapuchhre" in result["reply"]
+
+
+def test_history_knowledge_is_seeded_and_reachable(app):
+    titles = [i.title for i in app.knowledge.active_items()]
+    assert any("first ascent" in t.lower() for t in titles)
+    # Records/statistics guidance is internal only and must never reach the model.
+    assert not any("never state these" in t.lower() for t in titles)
+
+
+def test_records_guidance_is_human_only(app):
+    everything = [i.title for i in app.repos.knowledge.list()]
+    assert any("never state these" in t.lower() for t in everything)
+
+
+@pytest.mark.parametrize("query,expected_title", [
+    ("Who climbed Everest first?", "Everest — first ascent"),
+    ("Is that Ama Dablam?", "Ama Dablam — the Everest region's most photographed peak"),
+    ("What is the fishtail mountain?", "Machhapuchhre — the mountain nobody climbs"),
+    ("Did Mallory make it to the top?", "Uncertain history — how to handle it"),
+])
+def test_history_knowledge_recall(app, query, expected_title):
+    """The right item must land inside the window sent to the model."""
+    assert expected_title in [i.title for i in app.knowledge.for_comment(query)]
+
+
+# ------------------------------------------------------ off-topic == ignore
+
+
+@pytest.mark.parametrize("comment", [
+    "Vote for our party in the election",
+    "Bitcoin doubles your money, DM me",
+    "Check my profile for cheap flights",
+    "Work from home and earn daily",
+])
+def test_off_topic_comments_are_ignored(comment):
+    keen = AgentDecision(
+        action="reply", intent="general_engagement", confidence=0.95,
+        reply="Thanks!", needs_human=False, reason="", risk_level="low",
+    )
+    result = apply_guardrails(keen, comment_text=comment)
+    assert result.decision.action == "ignore"
+    assert result.decision.reply is None
+
+
+@pytest.mark.parametrize("comment", [
+    "Beautiful!", "😍", "I want to go there someday",
+    "Who climbed it first?", "Amazing story about Tenzing",
+])
+def test_short_on_topic_comments_are_not_mistaken_for_off_topic(comment):
+    """Off topic means about something else — not merely short."""
+    keen = AgentDecision(
+        action="reply", intent="compliment", confidence=0.95, reply="Lovely spot.",
+        needs_human=False, reason="", risk_level="low",
+    )
+    result = apply_guardrails(keen, comment_text=comment)
+    assert result.decision.action == "reply"
+
+
+def test_off_topic_comment_is_ignored_end_to_end(app):
+    result = _decide(app, "Vote for our party in the coming election")
+    assert result["action"] == "ignore"
+    assert result["status"] == CommentStatus.IGNORED.value
+
+
+# --------------------------------------------------------- comment density
+
+
+def test_busy_posts_are_processed_first_and_get_more_knowledge(app):
+    from social_agent.agent.engagement import EngagementIndex
+
+    _run(app)
+    index = EngagementIndex(app.repos, threshold=3)
+    index.refresh()
+
+    hot = index.hot_posts()
+    assert hot, "sample data should contain at least one busy post"
+    assert hot[0][1] >= hot[-1][1]                      # sorted by density
+
+    busiest = hot[0][0]
+    assert index.for_post(busiest).is_high is True
+    assert index.for_post(busiest).knowledge_budget == 14
+    assert index.for_post("no-such-post").knowledge_budget == 8
+
+    ordered = index.sort_by_density(app.repos.comments.list(limit=50))
+    assert ordered[0].platform_post_id == busiest
+
+
+def test_engagement_threshold_is_configurable(app):
+    from social_agent.agent.engagement import EngagementIndex
+
+    _run(app)
+    assert EngagementIndex(app.repos, threshold=1000).hot_posts() == []
+    assert EngagementIndex(app.repos, threshold=1).hot_posts() != []
+
+
+def test_cycle_reports_high_engagement_posts(app):
+    app.repos.settings.update(high_engagement_threshold=3)
+    report = _run(app)
+    assert report.high_engagement_posts > 0

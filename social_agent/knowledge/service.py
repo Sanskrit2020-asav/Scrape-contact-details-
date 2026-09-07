@@ -44,7 +44,10 @@ INTENT_CATEGORIES: dict[str, tuple[str, ...]] = {
 
 
 def _tokens(text: str) -> set[str]:
-    return {t for t in _WORD_RE.findall((text or "").lower()) if t not in _STOP and len(t) > 2}
+    # Two-character tokens are kept: peak names like "K2" are exactly the terms
+    # a "which mountain is this?" comment turns on, and dropping them made the
+    # knowledge base silent on the single most common identification question.
+    return {t for t in _WORD_RE.findall((text or "").lower()) if t not in _STOP and len(t) > 1}
 
 
 class KnowledgeService:
@@ -82,12 +85,19 @@ class KnowledgeService:
         for item in items:
             if item.category == "notice":
                 continue
-            haystack = _tokens(f"{item.title} {item.content} {item.category}")
+            title_tokens = _tokens(f"{item.title} {item.category}")
+            body_tokens = _tokens(item.content)
+            haystack = title_tokens | body_tokens
             if not haystack:
                 continue
-            overlap = len(query & haystack)
-            if overlap:
-                scored.append((overlap / (len(query) or 1), item))
+            # A title match counts double — the title is what names the peak or
+            # the topic, so "Ama Dablam" in a title is a stronger signal than the
+            # same words buried in prose. Dividing by the square root of item
+            # size stops long, chatty entries from outranking the precise one
+            # simply by containing more words.
+            hits = 2 * len(query & title_tokens) + len(query & body_tokens)
+            if hits:
+                scored.append((hits / (len(haystack) ** 0.5), item))
 
         scored.sort(key=lambda pair: pair[0], reverse=True)
         chosen = notices + [item for _, item in scored[: max(0, limit - len(notices))]]

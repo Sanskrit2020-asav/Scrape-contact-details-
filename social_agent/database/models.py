@@ -55,6 +55,11 @@ INTENTS: tuple[str, ...] = (
     "compliment",
     "general_engagement",
     "travel_question",
+    # Mountaineering history and story posts — the bulk of the page's content.
+    "mountain_history",
+    "peak_identification",
+    "climbing_question",
+    "expedition_question",
     "price_inquiry",
     "itinerary_question",
     "availability",
@@ -80,6 +85,8 @@ ALWAYS_ESCALATE_INTENTS: frozenset[str] = frozenset(
 )
 
 KNOWLEDGE_CATEGORIES: tuple[str, ...] = (
+    "history",
+    "peaks",
     "itinerary",
     "difficulty",
     "pricing",
@@ -205,6 +212,9 @@ class AgentSettings:
     instagram_posts_actor: str = ""
     instagram_reply_actor: str = ""
     #: 0 disables the cap. Counted against tokens used in the last 24 hours.
+    #: A post with at least this many comments counts as high-engagement:
+    #: its comments are processed first and shown more approved knowledge.
+    high_engagement_threshold: int = 10
     daily_token_budget: int = 0
     #: Per 1,000,000 tokens. Configuration, not constants: published rates
     #: change and differ per model, so a hardcoded number would go stale and be
@@ -236,6 +246,7 @@ class AgentSettings:
             "instagram_comments_actor",
             "instagram_posts_actor",
             "instagram_reply_actor",
+            "high_engagement_threshold",
             "daily_token_budget",
             "input_cost_per_million",
             "output_cost_per_million",

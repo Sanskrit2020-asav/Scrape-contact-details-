@@ -29,6 +29,7 @@ from ..social.base import (
     PlatformNotConfiguredError,
     SocialPlatformAdapter,
 )
+from .engagement import EngagementIndex
 from .guardrails import apply_guardrails
 from .policy import route
 from .publisher import ReplyPublisher
@@ -58,6 +59,7 @@ class CycleReport:
     failed: int = 0
     tokens_used: int = 0
     budget_stopped: bool = False
+    high_engagement_posts: int = 0
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -80,6 +82,7 @@ class CycleReport:
             "failed": self.failed,
             "tokens_used": self.tokens_used,
             "budget_stopped": self.budget_stopped,
+            "high_engagement_posts": self.high_engagement_posts,
             "errors": self.errors,
         }
 
@@ -101,6 +104,7 @@ class SocialEngagementAgent:
         self.knowledge = knowledge
         self.settings = settings or get_settings()
         self.publisher = ReplyPublisher(repositories, adapters)
+        self.engagement: EngagementIndex | None = None
 
     # -- one cycle -------------------------------------------------------
 
@@ -217,6 +221,18 @@ class SocialEngagementAgent:
             return
 
         claimed = self.repos.comments.claim_new(agent_settings.max_comments_per_run)
+
+        # Busy posts first: when a history post takes off, its comments are the
+        # substantive ones and deserve attention before a quiet post's.
+        self.engagement = EngagementIndex(self.repos, agent_settings.high_engagement_threshold)
+        self.engagement.refresh()
+        hot = self.engagement.hot_posts()
+        report.high_engagement_posts = len(hot)
+        if hot:
+            log.info("high-engagement posts this cycle", extra={"posts": hot[:5]})
+            self.repos.audit.log("engagement.high", details={"posts": dict(hot[:10])})
+        claimed = self.engagement.sort_by_density(claimed)
+
         for comment in claimed:
             try:
                 self.process_comment(comment, agent_settings, report)
@@ -241,10 +257,22 @@ class SocialEngagementAgent:
         report.processed += 1
 
         post = self.repos.posts.get_by_id(comment.post_id) if comment.post_id else None
+
+        # A comment on a busy post is shown more of the approved knowledge base.
+        # Note this is the *approved* knowledge base, not a web search: letting
+        # the model look things up and paraphrase is how a wrong first-ascent
+        # date ends up published under the company's name.
+        engagement = getattr(self, "engagement", None)
+        if engagement is None:
+            engagement = EngagementIndex(self.repos, agent_settings.high_engagement_threshold)
+            engagement.refresh()
+        signal = engagement.for_post(comment.platform_post_id)
+
         knowledge_items = self.knowledge.for_comment(
             comment.comment_text,
             post_caption=post.caption if post else "",
             post_topic=post.topic if post else "",
+            limit=signal.knowledge_budget,
         )
         previous_replies = self.repos.replies.recent_reply_texts(platform=comment.platform)
 
@@ -332,6 +360,8 @@ class SocialEngagementAgent:
                 "valid": ai_result.valid,
                 "attempts": ai_result.attempts,
                 "routing": routing.status,
+                "high_engagement": signal.is_high,
+                "post_comment_count": signal.comment_count,
                 "blockers": routing.blockers,
                 "error": ai_result.error,
             },
@@ -368,6 +398,7 @@ class SocialEngagementAgent:
             "blockers": routing.blockers,
             "guardrail_violations": guarded.violations,
             "ai_valid": ai_result.valid,
+            "engagement": signal.to_dict(),
         }
 
         # Tally.

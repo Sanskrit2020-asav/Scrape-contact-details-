@@ -15,6 +15,14 @@
       "type": "photo",
       "topic": "Everest Base Camp",
       "timestamp": "2026-08-30T04:40:00+00:00"
+    },
+    {
+      "id": "fb_post_1003",
+      "url": "https://www.facebook.com/northnepaltrek/posts/1003",
+      "caption": "29 May 1953. Edmund Hillary and Tenzing Norgay Sherpa stand on top of Everest. Tenzing had already been high on the mountain the year before with the Swiss.",
+      "type": "photo",
+      "topic": "Everest first ascent",
+      "timestamp": "2026-09-01T03:00:00+00:00"
     }
   ],
   "comments": [
@@ -80,6 +88,51 @@
       "ownerId": "fb_u_507",
       "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1001?comment_id=2007",
       "timestamp": "2026-09-01T08:15:00+00:00"
+    },
+    {
+      "id": "fb_c_2008",
+      "postId": "fb_post_1003",
+      "text": "Who was the first person to climb Everest?",
+      "ownerUsername": "Daniel R.",
+      "ownerId": "fb_u_508",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1003?comment_id=2008",
+      "timestamp": "2026-09-01T05:20:00+00:00"
+    },
+    {
+      "id": "fb_c_2009",
+      "postId": "fb_post_1003",
+      "text": "What year did Annapurna get climbed?",
+      "ownerUsername": "Lucia M.",
+      "ownerId": "fb_u_509",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1003?comment_id=2009",
+      "timestamp": "2026-09-01T06:02:00+00:00"
+    },
+    {
+      "id": "fb_c_2010",
+      "postId": "fb_post_1003",
+      "text": "How many people have summited Everest in total?",
+      "ownerUsername": "Ravi P.",
+      "ownerId": "fb_u_510",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1003?comment_id=2010",
+      "timestamp": "2026-09-01T07:45:00+00:00"
+    },
+    {
+      "id": "fb_c_2011",
+      "postId": "fb_post_1003",
+      "text": "Incredible story about Tenzing Norgay 🙏",
+      "ownerUsername": "Aiko T.",
+      "ownerId": "fb_u_511",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1003?comment_id=2011",
+      "timestamp": "2026-09-01T08:30:00+00:00"
+    },
+    {
+      "id": "fb_c_2012",
+      "postId": "fb_post_1003",
+      "text": "Vote for our party in the coming election 🇳🇵",
+      "ownerUsername": "campaign_page_2026",
+      "ownerId": "fb_u_512",
+      "commentUrl": "https://www.facebook.com/northnepaltrek/posts/1003?comment_id=2012",
+      "timestamp": "2026-09-01T09:10:00+00:00"
     }
   ]
 }

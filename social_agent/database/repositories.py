@@ -471,8 +471,9 @@ class SettingsRepository:
                      facebook_enabled, instagram_enabled,
                      facebook_comments_actor, facebook_posts_actor, facebook_reply_actor,
                      instagram_comments_actor, instagram_posts_actor, instagram_reply_actor,
-                     daily_token_budget, input_cost_per_million, output_cost_per_million)
-                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     high_engagement_threshold, daily_token_budget,
+                     input_cost_per_million, output_cost_per_million)
+                VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     int(defaults.dry_run), int(defaults.human_approval_required),
@@ -484,6 +485,7 @@ class SettingsRepository:
                     defaults.facebook_comments_actor, defaults.facebook_posts_actor,
                     defaults.facebook_reply_actor, defaults.instagram_comments_actor,
                     defaults.instagram_posts_actor, defaults.instagram_reply_actor,
+                    int(defaults.high_engagement_threshold),
                     int(defaults.daily_token_budget), float(defaults.input_cost_per_million),
                     float(defaults.output_cost_per_million),
                 ),

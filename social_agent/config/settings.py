@@ -203,6 +203,9 @@ class AgentDefaults:
     # 24 hours; 0 disables it. Prices are per 1,000,000 tokens and default to 0,
     # in which case the dashboard reports cost as "not configured" rather than
     # inventing a rate that may be out of date.
+    high_engagement_threshold: int = field(
+        default_factory=lambda: _env_int("HIGH_ENGAGEMENT_THRESHOLD", 10)
+    )
     daily_token_budget: int = field(default_factory=lambda: _env_int("DAILY_TOKEN_BUDGET", 0))
     input_cost_per_million: float = field(
         default_factory=lambda: _env_float("OPENAI_INPUT_COST_PER_MILLION", 0.0)

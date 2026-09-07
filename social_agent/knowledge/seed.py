@@ -9,7 +9,9 @@ seasons, and the standing policy of moving money questions into a DM.
 """
 from __future__ import annotations
 
-SEED_ITEMS: list[dict] = [
+from .mountain_history import HISTORY_ITEMS
+
+_TREK_ITEMS: list[dict] = [
     {
         "title": "How we handle price questions in comments",
         "category": "policy",
@@ -125,3 +127,9 @@ SEED_ITEMS: list[dict] = [
         ),
     },
 ]
+
+
+#: Trek operations knowledge plus the mountaineering history the page posts
+#: about. History is seeded because the agent may not state a date or a
+#: first-ascent claim that is not written down and approved.
+SEED_ITEMS: list[dict] = _TREK_ITEMS + HISTORY_ITEMS

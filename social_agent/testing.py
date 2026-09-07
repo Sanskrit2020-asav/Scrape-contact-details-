@@ -84,6 +84,32 @@ class QueuedOpenAITransport:
 
 #: Canned decisions keyed by a regex over the comment text. First match wins.
 DEMO_SCRIPT: list[tuple[str, dict[str, Any]]] = [
+    (r"how many|number of|in total", decision(
+        "escalate", intent="mountain_history", confidence=0.88, reply=None, needs_human=True,
+        risk_level="medium", reason="Asks for a count that changes — never stated publicly.")),
+    (r"first person to climb|who climbed|first ascent|first to climb", decision(
+        "reply", intent="mountain_history", confidence=0.93, needs_human=False, risk_level="low",
+        reply="Edmund Hillary and Tenzing Norgay Sherpa, on 29 May 1953.",
+        reason="First-ascent fact present in approved knowledge.")),
+    (r"what year|which year", decision(
+        "reply", intent="mountain_history", confidence=0.86, needs_human=False, risk_level="low",
+        reply="Annapurna I went in 1950 — three years before Everest, which surprises people.",
+        reason="Date present in approved knowledge.")),
+    (r"\bk2\b", decision(
+        "reply", intent="peak_identification", confidence=0.9, needs_human=False, risk_level="low",
+        reply="That's Machhapuchhre — K2 is over in Pakistan, a long way from here.",
+        reason="Common mix-up; corrected from approved knowledge.")),
+    (r"mallory", decision(
+        "reply", intent="mountain_history", confidence=0.84, needs_human=False, risk_level="low",
+        reply="Nobody knows for certain — his body turned up decades later, and the question is still open.",
+        reason="Genuinely disputed history; said so rather than picking a side.")),
+    (r"vote|election|political", decision(
+        "ignore", intent="irrelevant", confidence=0.95, reply=None, needs_human=False,
+        risk_level="low", reason="Not our subject.")),
+    (r"tenzing|sherpa|norgay", decision(
+        "reply", intent="mountain_history", confidence=0.91, needs_human=False, risk_level="low",
+        reply="He'd already been high on the mountain the year before with the Swiss — that experience mattered.",
+        reason="Story engagement, named the climber.")),
     (r"scam|refund|cheated|fraud", decision(
         "escalate", intent="complaint", confidence=0.94, reply=None, needs_human=True,
         risk_level="high", reason="Accusation against the company — a human must answer.")),
@@ -107,7 +133,7 @@ DEMO_SCRIPT: list[tuple[str, dict[str, Any]]] = [
         reason="General difficulty question answerable from approved knowledge.")),
     (r"which mountain|what mountain|where is this", decision(
         "reply", intent="travel_question", confidence=0.86, needs_human=False, risk_level="low",
-        reply="That's Annapurna Base Camp, at 4,130m — the caption has the details.",
+        reply="That's the Annapurna Sanctuary — the caption has the details.",
         reason="Answerable from the post itself.")),
     (r"want to (come|visit)|next year|hope to visit", decision(
         "reply", intent="lead", confidence=0.91, needs_human=False, risk_level="low",
